@@ -1,2 +1,2 @@
-# korobochnaya-igra
+# multris
 All things Tetris
