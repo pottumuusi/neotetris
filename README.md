@@ -1,2 +1,2 @@
-# multris
+# neotetris
 All things Tetris
