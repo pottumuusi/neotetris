@@ -87,22 +87,22 @@ main(void)
 
     ssize_t bytecount;
     int32_t latest_error;
-    int32_t sfd;
+    int32_t sock_fd;
     int32_t ret;
 
     struct sockaddr_un address_server;
     struct sockaddr_un address_client;
 
     ret = 0;
-    sfd = 0;
+    sock_fd = 0;
     bytecount = 0;
     latest_error = 0;
     sock_path = "/tmp/socket_local_pong";
 
     print_info("Starting up...");
 
-    sfd = socket(AF_UNIX, SOCK_DGRAM, socket_protocol);
-    if (-1 == sfd) {
+    sock_fd = socket(AF_UNIX, SOCK_DGRAM, socket_protocol);
+    if (-1 == sock_fd) {
         latest_error = errno;
         perror("Failed to create socket");
         goto error_exit;
@@ -126,7 +126,7 @@ main(void)
 #endif // NDEBUG
 
     print_info("Shutting down...");
-    ret = close(sfd);
+    ret = close(sock_fd);
     if (-1 == ret) {
         latest_error = errno;
         perror("Failed to close socket");
