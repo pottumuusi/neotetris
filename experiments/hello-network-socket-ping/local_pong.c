@@ -6,43 +6,22 @@
 #include <sys/un.h>
 #include <sys/socket.h>
 
-#define ERROR_MESSAGE_SIZE 256
+#include "util.h"
+
+#define SIZE_ERROR_MESSAGE 256
+#define SIZE_RECEIVE_BUFFER 512
 
 // TODO
 // * write separate files for Unix domain sockets and internet domain sockets?
 
-static void
-do_print(const char* print_level, const char* msg)
-{
-    const char* program_name = "Pong";
-
-    (void) printf("[%s|%s] %s\n", program_name, print_level, msg);
-}
-
-static void
-print_info(const char* msg)
-{
-    const char* print_level = "I";
-
-    do_print(print_level, msg);
-}
-
-static void
-print_error(const char* msg)
-{
-    const char* print_level = "E";
-
-    do_print(print_level, msg);
-}
-
 static int
 prepare_for_bind(struct sockaddr_un* addr_ptr, const char* sock_path)
 {
-    char error_message[ERROR_MESSAGE_SIZE];
+    char error_message[SIZE_ERROR_MESSAGE];
     int32_t ret;
 
     ret = 0;
-    memset(error_message, 0, ERROR_MESSAGE_SIZE);
+    memset(error_message, 0, SIZE_ERROR_MESSAGE);
 
     if (strlen(sock_path) > sizeof(addr_ptr->sun_path) - 1) {
         sscanf(
@@ -78,6 +57,43 @@ prepare_for_bind(struct sockaddr_un* addr_ptr, const char* sock_path)
     return 0;
 }
 
+static int
+receive_message(
+        int32_t const * const sock_fd_ptr,
+        struct sockaddr_un* address_client_ptr)
+{
+    socklen_t len;
+    ssize_t bytes_received;
+
+    char receive_buffer[SIZE_RECEIVE_BUFFER];
+
+    len = 0;
+    bytes_received = 0;
+    memset(receive_buffer, 0, SIZE_RECEIVE_BUFFER);
+
+    len = sizeof(struct sockaddr_un);
+    bytes_received = recvfrom(
+            *(sock_fd_ptr),
+            receive_buffer,
+            SIZE_RECEIVE_BUFFER,
+            0,
+            (struct sockaddr*) &address_client_ptr,
+            &len);
+    if (-1 == bytes_received) {
+        perror("Failed to recvfrom");
+        return -1;
+    }
+
+#ifndef NDEBUG
+    (void) printf(
+            "Server received %ld bytes from: %s\n",
+            (long) bytes_received,
+            address_client_ptr->sun_path);
+#endif // NDEBUG
+
+    return 0;
+}
+
 int
 main(void)
 {
@@ -99,7 +115,7 @@ main(void)
     latest_error = 0;
     sock_path = "/tmp/socket_local_pong";
 
-    print_info("Starting up...");
+    print_info("Starting up");
 
     sock_fd = socket(AF_UNIX, SOCK_DGRAM, socket_protocol);
     if (-1 == sock_fd) {
@@ -124,6 +140,17 @@ main(void)
         goto error_exit;
     }
 
+#ifndef NDEBUG
+    (void) printf(
+            "Server bound to: %s\n",
+            address_server.sun_path);
+#endif // NDEBUG
+
+    print_info("Starting to receive messages");
+    for (;;) {
+        receive_message(&sock_fd, &address_client);
+    }
+
 #if 0
     // TODO Do not make this server bind a client socket
     ret = prepare_for_?(&address_client, sock_path);
@@ -131,11 +158,7 @@ main(void)
     }
 #endif
 
-#ifndef NDEBUG
-    printf("");
-#endif // NDEBUG
-
-    print_info("Shutting down...");
+    print_info("Commencing server teardown");
     ret = close(sock_fd);
     if (-1 == ret) {
         latest_error = errno;
@@ -143,7 +166,7 @@ main(void)
         goto error_exit;
     }
 
-    print_info("Exiting...");
+    print_info("Exiting");
     return 0;
 
 error_exit:

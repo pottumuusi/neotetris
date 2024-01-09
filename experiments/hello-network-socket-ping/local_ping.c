@@ -1,8 +1,10 @@
 #include <stdio.h>
 
+#include "util.h"
+
 int main(void)
 {
-    printf("Ping starting up...\n");
+    print_info("Ping starting up");
 
     return 0;
 }

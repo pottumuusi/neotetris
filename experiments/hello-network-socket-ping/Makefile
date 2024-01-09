@@ -7,6 +7,13 @@ ALL_EXECUTABLES := \
 	$(EXECUTABLE_PING) \
 	$(EXECUTABLE_PONG)
 
+OBJ_PING := \
+	local_ping.o \
+	util.o
+OBJ_PONG := \
+	local_pong.o \
+	util.o
+
 %.o : %.c
 	$(CC) -c $(CFLAGS) $< -o $@
 
@@ -14,11 +21,11 @@ ALL_EXECUTABLES := \
 
 all: $(ALL_EXECUTABLES)
 
-$(EXECUTABLE_PING): local_ping.o
-	$(CC) $(CFLAGS) $< -o $@
+$(EXECUTABLE_PING): $(OBJ_PING)
+	$(CC) $(CFLAGS) $^ -o $@
 
-$(EXECUTABLE_PONG): local_pong.o
-	$(CC) $(CFLAGS) $< -o $@
+$(EXECUTABLE_PONG): $(OBJ_PONG)
+	$(CC) $(CFLAGS) $^ -o $@
 
 clean: $(ALL_EXECUTABLES) $(OBJ)
 	$(RM) $^
