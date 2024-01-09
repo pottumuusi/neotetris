@@ -114,6 +114,16 @@ main(void)
         goto error_exit;
     }
 
+    ret = bind(
+            sock_fd,
+            (struct sockaddr*) &address_server,
+            sizeof(struct sockaddr_un));
+    if (-1 == ret) {
+        latest_error = errno;
+        perror("Failed to bind socket");
+        goto error_exit;
+    }
+
 #if 0
     // TODO Do not make this server bind a client socket
     ret = prepare_for_?(&address_client, sock_path);
