@@ -49,7 +49,7 @@ prepare_for_bind(struct sockaddr_un* addr_ptr)
 
 #ifndef NDEBUG
     (void) printf("Constructed socket path: %s\n", addr_ptr->sun_path);
-#endif
+#endif // NDEBUG
 
     free(sock_path);
     sock_path = 0;
@@ -85,15 +85,37 @@ int main(void)
         goto error_exit;
     }
 
+    ret = bind(
+            sock_fd,
+            (struct sockaddr*) &address_client,
+            sizeof(struct sockaddr_un));
+    if (-1 == ret) {
+        latest_error = errno;
+        perror("Failed to bind socket");
+        goto error_exit;
+    }
+
+#ifndef NDEBUG
+    (void) printf(
+            "Client socket bound to: %s\n",
+            address_client.sun_path);
+#endif // NDEBUG
+
     print_info("Commencing client teardown");
     ret = close(sock_fd);
     if (-1 == ret) {
         latest_error = errno;
         perror("Failed to close socket");
+        (void) remove(address_client.sun_path);
         goto error_exit;
     }
 
-    // TODO remove() client socket file
+    ret = remove(address_client.sun_path);
+    if (-1 == ret) {
+        latest_error = errno;
+        perror("Failed to remove socket file");
+        goto error_exit;
+    }
 
     print_info("Exiting");
     return 0;

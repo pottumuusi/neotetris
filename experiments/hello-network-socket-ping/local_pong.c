@@ -142,7 +142,7 @@ main(void)
 
 #ifndef NDEBUG
     (void) printf(
-            "Server bound to: %s\n",
+            "Server socket bound to: %s\n",
             address_server.sun_path);
 #endif // NDEBUG
 
