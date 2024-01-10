@@ -7,7 +7,6 @@
 
 #include "util.h"
 
-#define SIZE_ERROR_MESSAGE 256
 #define SIZE_RECEIVE_BUFFER 512
 
 const char* g_program_name = "Pong";
