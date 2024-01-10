@@ -1,11 +1,11 @@
 #include <stdio.h>
 
+extern const char* g_program_name;
+
 void
 do_print(const char* print_level, const char* msg)
 {
-    const char* program_name = "Pong";
-
-    (void) printf("[%s|%s] %s\n", program_name, print_level, msg);
+    (void) printf("[%s|%s] %s\n", g_program_name, print_level, msg);
 }
 
 void

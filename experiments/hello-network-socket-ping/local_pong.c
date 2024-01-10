@@ -1,4 +1,3 @@
-#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -10,6 +9,8 @@
 
 #define SIZE_ERROR_MESSAGE 256
 #define SIZE_RECEIVE_BUFFER 512
+
+const char* g_program_name = "Pong";
 
 // TODO
 // * write separate files for Unix domain sockets and internet domain sockets?
