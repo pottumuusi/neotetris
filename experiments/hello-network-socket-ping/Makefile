@@ -36,7 +36,7 @@ MACRO_DEFINITIONS_RELEASE := -DNDEBUG
 # Currently set empty macro definitions for debug target
 MACRO_DEFINITIONS_DEBUG :=
 
-# Enable the following row in order to debug.
+# Temporarily uncomment the following row in order to debug.
 # CFLAGS := -g $(CFLAGS)
 
 ifeq ($(MAKECMDGOALS),release)
