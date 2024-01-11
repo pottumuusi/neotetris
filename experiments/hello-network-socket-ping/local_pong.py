@@ -1,29 +1,34 @@
 """
 pong.py
+
+BUG: As far as I know, the listen socket does not get closed.
 """
 
 import socket
 import time
 
 g_DEBUG = False
-g_socket = None
 
+"""
+On each call, a new socket is created and then left unattended upon return.
+"""
 def listen_for_connection():
     host = '' # Empty string means all interfaces and causes listen(?)
     port = 10001
     address = None
     connection = None
+    sock_listen = None
     unaccept_backlog = 3
 
-    g_socket = socket.socket()
-    g_socket.bind( (host, port) )
+    sock_listen = socket.socket()
+    sock_listen.bind( (host, port) )
     print(f'Socket bound to port {port}')
 
-    g_socket.listen(unaccept_backlog)
+    sock_listen.listen(unaccept_backlog)
     print('Socket listening')
 
     print('Waiting to accept a connection')
-    sock_connected, address = g_socket.accept()
+    sock_connected, address = sock_listen.accept()
     print(f'Accepted a connection from address: {address}')
 
     return sock_connected
