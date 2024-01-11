@@ -83,7 +83,6 @@ send_and_echo_messages(
     ret = 0;
     memset(message, 0, SIZE_MESSAGE_PING);
 
-    // TODO set message here
     strncpy(message, "Ping", SIZE_MESSAGE_PING);
 
     ret = sendto(
