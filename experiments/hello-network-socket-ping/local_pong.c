@@ -149,9 +149,7 @@ main(void)
 #endif // NDEBUG
 
     print_info("Starting to receive messages");
-    for (;;) {
-        receive_message(&sock_fd, &address_client);
-    }
+    receive_message(&sock_fd, &address_client);
 
 #if 0
     // TODO Do not make this server bind a client socket
