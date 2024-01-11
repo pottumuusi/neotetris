@@ -62,7 +62,8 @@ prepare_for_bind(struct sockaddr_un* addr_ptr, const char* sock_path)
 static int
 receive_message(
         int32_t const * const sock_fd_ptr,
-        struct sockaddr_un* address_client_ptr)
+        struct sockaddr_un* address_client_ptr,
+        char* out_message)
 {
     socklen_t len;
     ssize_t bytes_received;
@@ -93,6 +94,26 @@ receive_message(
             address_client_ptr->sun_path);
 #endif // NDEBUG
 
+    memcpy(out_message, receive_buffer, SIZE_RECEIVE_BUFFER);
+
+    return 0;
+}
+
+static int
+message_is_expected_message(char const * const message)
+{
+    const char* expected_message = "Ping";
+    int32_t expected_message_len = 4;
+    int32_t ret;
+
+    ret = 0;
+
+    ret = memcmp(message, expected_message, expected_message_len);
+
+    if (0 == ret) {
+        return 1;
+    }
+
     return 0;
 }
 
@@ -108,6 +129,8 @@ main(void)
     int32_t sock_fd;
     int32_t ret;
 
+    char message[SIZE_RECEIVE_BUFFER];
+
     struct sockaddr_un address_server;
     struct sockaddr_un address_client;
 
@@ -116,6 +139,8 @@ main(void)
     bytecount = 0;
     latest_error = 0;
     sock_path = SOCK_PATH_SERVER;
+
+    memset(message, 0, SIZE_RECEIVE_BUFFER);
 
     print_info("Starting up");
 
@@ -149,7 +174,20 @@ main(void)
 #endif // NDEBUG
 
     print_info("Starting to receive messages");
-    receive_message(&sock_fd, &address_client);
+    receive_message(&sock_fd, &address_client, message);
+
+    if ( ! message_is_expected_message(message)) {
+        print_error("Message is not expected message");
+        ret = close(sock_fd);
+        if (-1 == ret) {
+            // Do not set latest_error, as close() failure is not the root
+            // error.
+            perror("Failed to close socket");
+        }
+        goto error_exit;
+    }
+
+    print_info("Received message is the expected message!");
 
 #if 0
     // TODO Do not make this server bind a client socket
