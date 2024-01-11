@@ -79,7 +79,7 @@ receive_message(
             receive_buffer,
             SIZE_RECEIVE_BUFFER,
             0,
-            (struct sockaddr*) &address_client_ptr,
+            (struct sockaddr*) address_client_ptr,
             &len);
     if (-1 == bytes_received) {
         perror("Failed to recvfrom");
