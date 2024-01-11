@@ -16,7 +16,6 @@ def listen_for_connection():
     host = '' # Empty string means all interfaces and causes listen(?)
     port = 10001
     address = None
-    connection = None
     sock_listen = None
     unaccept_backlog = 3
 
