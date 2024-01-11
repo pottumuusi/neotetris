@@ -5,6 +5,7 @@
 #include <sys/un.h>
 #include <sys/socket.h>
 
+#include "shared.h"
 #include "util.h"
 
 #define SIZE_RECEIVE_BUFFER 512
@@ -14,6 +15,7 @@ const char* g_program_name = "Pong";
 // TODO
 // * write separate files for Unix domain sockets and internet domain sockets?
 
+// TODO consider rename to: prepare_for_bind_server
 static int
 prepare_for_bind(struct sockaddr_un* addr_ptr, const char* sock_path)
 {
@@ -113,7 +115,7 @@ main(void)
     sock_fd = 0;
     bytecount = 0;
     latest_error = 0;
-    sock_path = "/tmp/socket_local_pong";
+    sock_path = SOCK_PATH_SERVER;
 
     print_info("Starting up");
 

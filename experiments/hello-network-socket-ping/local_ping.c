@@ -6,10 +6,14 @@
 #include <sys/un.h>
 #include <sys/socket.h>
 
+#include "shared.h"
 #include "util.h"
+
+#define SIZE_MESSAGE_PING 4
 
 const char* g_program_name = "Ping";
 
+// TODO consider rename to: prepare_for_bind_client
 static int
 prepare_for_bind(struct sockaddr_un* addr_ptr)
 {
@@ -57,6 +61,46 @@ prepare_for_bind(struct sockaddr_un* addr_ptr)
     return 0;
 }
 
+static void
+construct_server_address(struct sockaddr_un* addr_ptr)
+{
+    memset(addr_ptr, 0, sizeof(struct sockaddr_un));
+    addr_ptr->sun_family = AF_UNIX;
+    strncpy(
+            addr_ptr->sun_path,
+            SOCK_PATH_SERVER,
+            sizeof(addr_ptr->sun_path) - 1);
+}
+
+static int
+send_and_echo_messages(
+        int32_t const * const sock_fd_ptr,
+        struct sockaddr_un* address_server_ptr)
+{
+    char message[SIZE_MESSAGE_PING];
+    int32_t ret;
+
+    ret = 0;
+    memset(message, 0, SIZE_MESSAGE_PING);
+
+    // TODO set message here
+    strncpy(message, "Ping", SIZE_MESSAGE_PING);
+
+    ret = sendto(
+            *(sock_fd_ptr),
+            message,
+            SIZE_MESSAGE_PING,
+            0,
+            (struct sockaddr*) address_server_ptr,
+            sizeof(struct sockaddr_un));
+    if (-1 == ret) {
+        perror("Failed to send message to server");
+        return -1;
+    }
+
+    return 0;
+}
+
 int main(void)
 {
     const int32_t socket_protocol = 0;
@@ -66,6 +110,7 @@ int main(void)
     int32_t ret;
 
     struct sockaddr_un address_client;
+    struct sockaddr_un address_server;
 
     ret = 0;
     sock_fd = 0;
@@ -100,6 +145,12 @@ int main(void)
             "Client socket bound to: %s\n",
             address_client.sun_path);
 #endif // NDEBUG
+
+    construct_server_address(&address_server);
+
+    send_and_echo_messages(
+            &sock_fd,
+            &address_server);
 
     print_info("Commencing client teardown");
     ret = close(sock_fd);

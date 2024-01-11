@@ -14,6 +14,9 @@ OBJ_PONG := \
 	local_pong.o \
 	util.o
 
+# Enable the following row in order to debug.
+# CFLAGS := -g $(CFLAGS)
+
 %.o : %.c
 	$(CC) -c $(CFLAGS) $< -o $@
 

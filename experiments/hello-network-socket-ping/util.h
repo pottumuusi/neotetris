@@ -12,4 +12,4 @@ print_info(const char* msg);
 void
 print_error(const char* msg);
 
-#endif
+#endif // UTIL_H_DEFINED
