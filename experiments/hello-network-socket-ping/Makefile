@@ -47,7 +47,7 @@ ifeq ($(MAKECMDGOALS),debug)
 endif
 ifeq ($(MAKECMDGOALS),)
 	# If no target given on commandline, expect defaulting to 'debug'
-	# target
+	# target.
 	MACRO_DEFINITIONS := $(MACRO_DEFINITIONS_DEBUG)
 endif
 
