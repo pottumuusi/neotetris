@@ -13,9 +13,8 @@
 
 const char* g_program_name = "Ping";
 
-// TODO consider rename to: prepare_for_bind_client
 static int
-prepare_for_bind(struct sockaddr_un* addr_ptr)
+prepare_for_bind_client(struct sockaddr_un* addr_ptr)
 {
     int32_t sock_path_max_len;
     int32_t ret;
@@ -25,6 +24,8 @@ prepare_for_bind(struct sockaddr_un* addr_ptr)
 
     ret = 0;
     sock_path = 0;
+
+    memset(error_message, 0, SIZE_ERROR_MESSAGE);
 
     sock_path_max_len = sizeof(addr_ptr->sun_path) - 1;
     sock_path = (char*) calloc(sock_path_max_len, sizeof(char));
@@ -73,14 +74,16 @@ construct_server_address(struct sockaddr_un* addr_ptr)
 }
 
 static int
-send_and_echo_messages(
+send_and_echo_message(
         int32_t const * const sock_fd_ptr,
         struct sockaddr_un* address_server_ptr)
 {
     char message[SIZE_MESSAGE_PING];
     int32_t ret;
+    int32_t flags;
 
     ret = 0;
+    flags = 0;
     memset(message, 0, SIZE_MESSAGE_PING);
 
     strncpy(message, "Ping", SIZE_MESSAGE_PING);
@@ -89,13 +92,15 @@ send_and_echo_messages(
             *(sock_fd_ptr),
             message,
             SIZE_MESSAGE_PING,
-            0,
+            flags,
             (struct sockaddr*) address_server_ptr,
             sizeof(struct sockaddr_un));
     if (-1 == ret) {
         perror("Failed to send message to server");
         return -1;
     }
+
+    // TODO implement echoing
 
     return 0;
 }
@@ -114,6 +119,9 @@ int main(void)
     ret = 0;
     sock_fd = 0;
 
+    memset(&address_client, 0, sizeof(struct sockaddr_un));
+    memset(&address_server, 0, sizeof(struct sockaddr_un));
+
     print_info("Starting up");
 
     sock_fd = socket(AF_UNIX, SOCK_DGRAM, socket_protocol);
@@ -123,7 +131,7 @@ int main(void)
         goto error_exit;
     }
 
-    ret = prepare_for_bind(&address_client);
+    ret = prepare_for_bind_client(&address_client);
     if (-1 == ret) {
         print_error("Failed to prepare for bind");
         goto error_exit;
@@ -147,9 +155,16 @@ int main(void)
 
     construct_server_address(&address_server);
 
-    send_and_echo_messages(
+    print_info("Sending and echoing a message");
+    ret = send_and_echo_message(
             &sock_fd,
             &address_server);
+    if (-1 == ret) {
+        print_error("Message send and echo failed");
+        (void) close(sock_fd);
+        (void) remove(address_client.sun_path);
+        goto error_exit;
+    }
 
     print_info("Commencing client teardown");
     ret = close(sock_fd);
