@@ -1,0 +1,8 @@
+* Beej’s Guide to Network Programming Using Internet Sockets
+    * https://beej.us/guide/bgnet/
+    * https://web.cse.msstate.edu/~ramkumar/bgnet.pdf
+* The Linux Programming Interface - A Linux and UNIX System Programming Handbook
+    * Chapters: 56-61
+    * https://www.man7.org/tlpi/
+    * https://en.wikipedia.org/wiki/The_Linux_Programming_Interface
+    * https://www.adlibris.com/fi/haku?q=the+linux+programming+interface
