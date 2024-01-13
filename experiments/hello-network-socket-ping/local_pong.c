@@ -15,9 +15,8 @@ const char* g_program_name = "Pong";
 // TODO
 // * write separate files for Unix domain sockets and internet domain sockets?
 
-// TODO consider rename to: prepare_for_bind_server
 static int
-prepare_for_bind(struct sockaddr_un* addr_ptr, const char* sock_path)
+prepare_for_bind_server(struct sockaddr_un* addr_ptr, const char* sock_path)
 {
     char error_message[SIZE_ERROR_MESSAGE];
     int32_t ret;
@@ -65,6 +64,8 @@ receive_message(
         struct sockaddr_un* address_client_ptr,
         char* out_message)
 {
+    const int32_t flags = 0;
+
     socklen_t len;
     ssize_t bytes_received;
 
@@ -79,7 +80,7 @@ receive_message(
             *(sock_fd_ptr),
             receive_buffer,
             SIZE_RECEIVE_BUFFER,
-            0,
+            flags,
             (struct sockaddr*) address_client_ptr,
             &len);
     if (-1 == bytes_received) {
@@ -121,7 +122,6 @@ int
 main(void)
 {
     const int32_t socket_protocol = 0;
-    const int32_t msg_size = 32;
     const char* sock_path;
 
     ssize_t bytecount;
@@ -141,6 +141,8 @@ main(void)
     sock_path = SOCK_PATH_SERVER;
 
     memset(message, 0, SIZE_RECEIVE_BUFFER);
+    memset(&address_server, 0, sizeof(struct sockaddr_un));
+    memset(&address_client, 0, sizeof(struct sockaddr_un));
 
     print_info("Starting up");
 
@@ -151,7 +153,7 @@ main(void)
         goto error_exit;
     }
 
-    ret = prepare_for_bind(&address_server, sock_path);
+    ret = prepare_for_bind_server(&address_server, sock_path);
     if (-1 == ret) {
         print_error("Failed to prepare for bind");
         goto error_exit;
@@ -188,13 +190,6 @@ main(void)
     }
 
     print_info("Received message is the expected message!");
-
-#if 0
-    // TODO Do not make this server bind a client socket
-    ret = prepare_for_?(&address_client, sock_path);
-    if () {
-    }
-#endif
 
     print_info("Commencing server teardown");
     ret = close(sock_fd);
