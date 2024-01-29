@@ -22,9 +22,39 @@ std::string g_msg_temp = "";
 
 static bool device_is_suitable(const VkPhysicalDevice& device)
 {
-    return true; // TODO actual suitability check
+    bool is_suitable;
+
+    VkPhysicalDeviceProperties properties;
+    VkPhysicalDeviceFeatures features;
+
+    is_suitable = false;
+    properties = {};
+    features = {};
+
+    vkGetPhysicalDeviceProperties(
+            device,
+            &properties);
+    vkGetPhysicalDeviceFeatures(
+            device,
+            &features);
+
+    if ( ! features.geometryShader ) {
+        return false;
+    }
+
+    is_suitable =
+        properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ||
+        properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU;
+    if ( ! is_suitable) {
+        return false;
+    }
+
+    return true;
 }
 
+/*
+ * Always selecting the first suitable device which gets found.
+ */
 static VkPhysicalDevice pick_physical_device(VkInstance* vulkan_instance)
 {
     std::uint32_t device_count;
