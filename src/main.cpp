@@ -20,6 +20,51 @@
 const char* g_program_name = "neotetris";
 std::string g_msg_temp = "";
 
+struct QueueFamilyIndices {
+    std::uint32_t graphics_family;
+};
+
+static struct QueueFamilyIndices
+find_queue_family_indices(const VkPhysicalDevice& device)
+{
+    struct QueueFamilyIndices family_indices;
+
+    std::int32_t i;
+    std::uint32_t queue_family_count;
+    std::vector<VkQueueFamilyProperties> queue_families;
+
+    i = 0;
+    queue_family_count = 0;
+    queue_families.resize(0);
+    family_indices = {0};
+
+    vkGetPhysicalDeviceQueueFamilyProperties(
+            device,
+            &queue_family_count,
+            nullptr);
+
+    queue_families.resize(queue_family_count);
+
+    vkGetPhysicalDeviceQueueFamilyProperties(
+            device,
+            &queue_family_count,
+            queue_families.data());
+
+    for (i = 0; i < queue_families.size(); i++) {
+        if (queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+            family_indices.graphics_family = i;
+            break;
+        }
+    }
+
+    if (i == queue_families.size()) {
+        g_msg_temp = "Failed to find graphics queue family";
+        throw std::runtime_error(g_msg_temp);
+    }
+
+    return family_indices;
+}
+
 static bool device_is_suitable(const VkPhysicalDevice& device)
 {
     bool is_suitable;
@@ -46,6 +91,15 @@ static bool device_is_suitable(const VkPhysicalDevice& device)
         properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ||
         properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU;
     if ( ! is_suitable) {
+        return false;
+    }
+
+    try {
+        (void) find_queue_family_indices(device);
+    } catch(std::runtime_error const& e) {
+        g_msg_temp = "Exception while checking device suitability: ";
+        g_msg_temp += e.what();
+        Log::w(g_msg_temp);
         return false;
     }
 
