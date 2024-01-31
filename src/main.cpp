@@ -167,6 +167,50 @@ static VkPhysicalDevice pick_physical_device(VkInstance* vulkan_instance)
     return physical_device;
 }
 
+static VkDevice
+create_logical_device(
+        const VkPhysicalDevice& device,
+        const struct QueueFamilyIndices& family_indices)
+{
+    float queue_priority;
+
+    VkResult result;
+    VkDevice logical_device;
+    VkDeviceQueueCreateInfo queue_create_info;
+    VkPhysicalDeviceFeatures device_features;
+    VkDeviceCreateInfo device_create_info;
+
+    result = VK_ERROR_UNKNOWN;
+    queue_priority = 1.0f;
+    logical_device = VK_NULL_HANDLE;
+    queue_create_info = {};
+    device_features = {};
+    device_create_info = {};
+
+    queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queue_create_info.queueFamilyIndex = family_indices.graphics_family;
+    queue_create_info.queueCount = 1;
+    queue_create_info.pQueuePriorities = &queue_priority;
+
+    device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    device_create_info.pQueueCreateInfos = &queue_create_info;
+    device_create_info.queueCreateInfoCount = 1;
+    device_create_info.pEnabledFeatures = &device_features;
+    device_create_info.enabledExtensionCount = 0;
+    device_create_info.enabledLayerCount = 0;
+
+    result = vkCreateDevice(
+            device,
+            &device_create_info,
+            nullptr,
+            &logical_device);
+    if (VK_SUCCESS != result) {
+        throw std::runtime_error("Failed to create logical device");
+    }
+
+    return logical_device;
+}
+
 static void game(void)
 {
     std::int32_t ret;
@@ -186,6 +230,8 @@ static void game(void)
     std::uint32_t window_flags;
     std::string window_title;
 
+    struct QueueFamilyIndices family_indices;
+
     SDL_Window* main_window;
 
     VkApplicationInfo application_info;
@@ -194,6 +240,8 @@ static void game(void)
     VkResult result;
     VkInstance vulkan_instance;
     VkPhysicalDevice physical_device;
+    VkDevice logical_device;
+    VkQueue graphics_queue;
 
     ret = -1;
     flags = 0;
@@ -219,6 +267,9 @@ static void game(void)
     result = VK_ERROR_UNKNOWN;
     vulkan_instance = {};
     physical_device = VK_NULL_HANDLE;
+    logical_device = VK_NULL_HANDLE;
+
+    family_indices = {0};
 
     msg_temp = g_program_name;
     msg_temp += " running";
@@ -287,6 +338,13 @@ static void game(void)
     }
 
     physical_device = pick_physical_device(&vulkan_instance);
+    family_indices = find_queue_family_indices(physical_device);
+    logical_device = create_logical_device(physical_device, family_indices);
+    vkGetDeviceQueue(
+            logical_device,
+            family_indices.graphics_family,
+            0,
+            &graphics_queue);
 
     // SDL createMainRenderer # <- necessary here?
 
@@ -295,6 +353,8 @@ static void game(void)
     msg_temp = g_program_name;
     msg_temp += " shutting down";
     Log::i(msg_temp);
+
+    vkDestroyDevice(logical_device, nullptr);
 
     vkDestroyInstance(vulkan_instance, nullptr);
 
