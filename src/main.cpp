@@ -106,6 +106,25 @@ static bool device_is_suitable(const VkPhysicalDevice& device)
     return true;
 }
 
+static VkSurfaceKHR
+create_surface(SDL_Window* window, VkInstance instance)
+{
+    SDL_bool ret;
+    VkSurfaceKHR surface;
+
+    surface = VK_NULL_HANDLE;
+    ret = SDL_FALSE;
+
+    ret = SDL_Vulkan_CreateSurface(window, instance, &surface);
+    if (SDL_FALSE == ret) {
+        g_msg_temp = "Failed to create surface: ";
+        g_msg_temp += SDL_GetError();
+        throw std::runtime_error(g_msg_temp);
+    }
+
+    return surface;
+}
+
 /*
  * Always selecting the first suitable device which gets found.
  */
@@ -242,6 +261,7 @@ static void game(void)
     VkPhysicalDevice physical_device;
     VkDevice logical_device;
     VkQueue graphics_queue;
+    VkSurfaceKHR surface;
 
     ret = -1;
     flags = 0;
@@ -268,6 +288,8 @@ static void game(void)
     vulkan_instance = {};
     physical_device = VK_NULL_HANDLE;
     logical_device = VK_NULL_HANDLE;
+    graphics_queue = VK_NULL_HANDLE;
+    surface = VK_NULL_HANDLE;
 
     family_indices = {0};
 
@@ -337,6 +359,7 @@ static void game(void)
         throw std::runtime_error(msg_temp);
     }
 
+    surface = create_surface(main_window, vulkan_instance);
     physical_device = pick_physical_device(&vulkan_instance);
     family_indices = find_queue_family_indices(physical_device);
     logical_device = create_logical_device(physical_device, family_indices);
@@ -354,8 +377,8 @@ static void game(void)
     msg_temp += " shutting down";
     Log::i(msg_temp);
 
+    vkDestroySurfaceKHR(vulkan_instance, surface, nullptr);
     vkDestroyDevice(logical_device, nullptr);
-
     vkDestroyInstance(vulkan_instance, nullptr);
 
     SDL_Quit();
