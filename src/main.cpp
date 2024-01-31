@@ -276,7 +276,7 @@ static void game(void)
     window_y = SDL_WINDOWPOS_UNDEFINED;
     window_w = 640;
     window_h = 480;
-    window_flags = SDL_WINDOW_SHOWN;
+    window_flags = SDL_WINDOW_VULKAN;
     window_title = g_program_name;
 
     application_info = {};
