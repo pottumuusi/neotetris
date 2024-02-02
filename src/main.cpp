@@ -28,6 +28,12 @@ struct QueueFamilyIndices {
     std::uint32_t presentation_family_found;
 };
 
+struct SurfaceProperties {
+    VkSurfaceCapabilitiesKHR capabilities;
+    std::vector<VkSurfaceFormatKHR> formats;
+    std::vector<VkPresentModeKHR> present_modes;
+};
+
 static struct QueueFamilyIndices
 find_queue_family_indices(
         const VkPhysicalDevice& device,
@@ -145,6 +151,49 @@ device_extensions_are_supported(const VkPhysicalDevice& device)
     return required_extensions.empty();
 }
 
+static struct SurfaceProperties
+find_surface_properties(
+        const VkPhysicalDevice& device,
+        const VkSurfaceKHR& surface)
+{
+    std::uint32_t count_format;
+    std::uint32_t count_mode;
+
+    struct SurfaceProperties surface_properties;
+
+    surface_properties = {0};
+    count_format = 0;
+    count_mode = 0;
+
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &count_format, nullptr);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &count_mode, nullptr);
+
+    if (0 != count_format) {
+        surface_properties.formats.resize(count_format);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(
+                device,
+                surface,
+                &count_format,
+                surface_properties.formats.data());
+    }
+
+    if (0 != count_mode) {
+        surface_properties.present_modes.resize(count_mode);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(
+                device,
+                surface,
+                &count_mode,
+                surface_properties.present_modes.data());
+    }
+
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+            device,
+            surface,
+            &surface_properties.capabilities);
+
+    return surface_properties;
+}
+
 static bool
 device_is_suitable(
         const VkPhysicalDevice& device,
@@ -154,6 +203,7 @@ device_is_suitable(
     bool extensions_supported;
 
     struct QueueFamilyIndices family_indices;
+    struct SurfaceProperties surface_properties;
 
     VkPhysicalDeviceProperties properties;
     VkPhysicalDeviceFeatures features;
@@ -163,6 +213,7 @@ device_is_suitable(
     properties = {};
     features = {};
     family_indices = {0};
+    surface_properties = {0};
 
     Log::i("Checking device suitability");
 
@@ -175,6 +226,7 @@ device_is_suitable(
 
     family_indices = find_queue_family_indices(device, surface);
     extensions_supported = device_extensions_are_supported(device);
+    surface_properties = find_surface_properties(device, surface);
 
     if ( ! features.geometryShader ) {
         Log::w("Geometry shader not found");
@@ -206,6 +258,15 @@ device_is_suitable(
 
     if ( ! extensions_supported) {
         Log::w("Required extensions not supported");
+        return false;
+    }
+
+    // Via surface properties, check if swap chain support is present.
+    is_suitable =
+        ( ! surface_properties.formats.empty()) &&
+        ( ! surface_properties.present_modes.empty());
+    if ( ! is_suitable) {
+        Log::w("Insufficient swap chain support");
         return false;
     }
 
