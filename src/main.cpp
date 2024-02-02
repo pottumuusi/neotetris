@@ -305,6 +305,9 @@ static void game(void)
     VkQueue graphics_queue;
     VkSurfaceKHR surface;
 
+    const std::string application_name = g_program_name;
+    const std::string engine_name = "No engine";
+
     ret = -1;
     flags = 0;
 
@@ -323,8 +326,6 @@ static void game(void)
 
     application_info = {};
     create_info = {};
-    const std::string application_name = g_program_name;
-    const std::string engine_name = "No engine";
 
     result = VK_ERROR_UNKNOWN;
     vulkan_instance = {};
