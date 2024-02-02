@@ -23,13 +23,11 @@ std::string g_msg_temp = "";
 struct QueueFamilyIndices {
     std::uint32_t graphics_family; // TODO rename to drawing_family
     std::uint32_t presentation_family;
+
+    std::uint32_t graphics_family_found; // TODO rename to drawing_family
+    std::uint32_t presentation_family_found;
 };
 
-/*
- * TODO call only once. Extract checking code out from this
- * function. Add a separate found data field to QueueFamilyIndices
- * for each family index.
- */
 static struct QueueFamilyIndices
 find_queue_family_indices(
         const VkPhysicalDevice& device,
@@ -37,15 +35,15 @@ find_queue_family_indices(
 {
     struct QueueFamilyIndices family_indices;
 
+    bool set_index;
+
     std::int32_t i;
     std::uint32_t queue_family_count;
     std::vector<VkQueueFamilyProperties> queue_families;
 
     VkBool32 has_presentation_support;
-    bool presentation_support_found;
 
-    has_presentation_support = false;
-    presentation_support_found = false;
+    set_index = false;
     i = 0;
     queue_family_count = 0;
     queue_families.resize(0);
@@ -70,35 +68,35 @@ find_queue_family_indices(
                 surface,
                 &has_presentation_support);
 
-        if (( ! presentation_support_found) &&  has_presentation_support) {
+        set_index =
+            ( ! family_indices.presentation_family_found) &&
+            has_presentation_support;
+        if (set_index) {
             // There is a high chance of presentation family being identical to
             // graphics/drawing family. However, attempt to cover more cases by
             // treating presentation family separately.
             family_indices.presentation_family = i;
-            presentation_support_found = true;
+            family_indices.presentation_family_found = 1;
         }
 
         if (queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
             family_indices.graphics_family = i;
+            family_indices.graphics_family_found = 1;
             break;
         }
-    }
-
-    if (i == queue_families.size()) {
-        g_msg_temp = "Failed to find graphics queue family";
-        throw std::runtime_error(g_msg_temp);
-    }
-
-    if ( ! presentation_support_found ) {
-        throw std::runtime_error("Failed to find presentation queue family");
     }
 
     return family_indices;
 }
 
-static bool device_is_suitable(const VkPhysicalDevice& device, const VkSurfaceKHR& surface)
+static bool
+device_is_suitable(
+        const VkPhysicalDevice& device,
+        const VkSurfaceKHR& surface)
 {
     bool is_suitable;
+
+    struct QueueFamilyIndices family_indices;
 
     VkPhysicalDeviceProperties properties;
     VkPhysicalDeviceFeatures features;
@@ -106,6 +104,9 @@ static bool device_is_suitable(const VkPhysicalDevice& device, const VkSurfaceKH
     is_suitable = false;
     properties = {};
     features = {};
+    family_indices = {0};
+
+    Log::i("Checking device suitability");
 
     vkGetPhysicalDeviceProperties(
             device,
@@ -114,7 +115,10 @@ static bool device_is_suitable(const VkPhysicalDevice& device, const VkSurfaceKH
             device,
             &features);
 
+    family_indices = find_queue_family_indices(device, surface);
+
     if ( ! features.geometryShader ) {
+        Log::w("Geometry shader not found");
         return false;
     }
 
@@ -122,15 +126,22 @@ static bool device_is_suitable(const VkPhysicalDevice& device, const VkSurfaceKH
         properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ||
         properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU;
     if ( ! is_suitable) {
+        Log::w("Unsuitable device type");
         return false;
     }
 
-    try {
-        (void) find_queue_family_indices(device, surface);
-    } catch(std::runtime_error const& e) {
-        g_msg_temp = "Exception while checking device suitability: ";
-        g_msg_temp += e.what();
-        Log::w(g_msg_temp);
+    is_suitable =
+        family_indices.graphics_family_found &&
+        family_indices.presentation_family_found;
+    if ( ! is_suitable) {
+        Log::w("Missing family index/indices");
+#ifndef NDEBUG
+        printf("Family indices:\n");
+        printf("\tgraphics_family_found: %u\n",
+                family_indices.graphics_family_found);
+        printf("\tpresentation_family_found: %u\n",
+                family_indices.presentation_family_found);
+#endif // NDEBUG
         return false;
     }
 
