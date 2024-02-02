@@ -90,11 +90,54 @@ find_queue_family_indices(
 }
 
 static bool
+device_extensions_are_supported(const VkPhysicalDevice& device)
+{
+    std::uint32_t i;
+    std::uint32_t extension_count;
+
+    std::vector<VkExtensionProperties> available_extensions;
+
+    std::vector<std::string> required_extensions = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    };
+    std::vector<std::string>::iterator iterator;
+
+    i = 0;
+    extension_count = 0;
+    available_extensions.resize(0);
+
+    vkEnumerateDeviceExtensionProperties(
+            device,
+            nullptr,
+            &extension_count,
+            nullptr);
+    available_extensions.resize(extension_count);
+    vkEnumerateDeviceExtensionProperties(
+            device,
+            nullptr,
+            &extension_count,
+            available_extensions.data());
+
+    for (const VkExtensionProperties& extension : available_extensions) {
+        for (i = 0; i < required_extensions.size(); i++) {
+            if (0 == required_extensions[i].compare(extension.extensionName)) {
+                iterator = required_extensions.begin() + i;
+                required_extensions.erase(iterator);
+                break;
+            }
+        }
+    }
+
+    return required_extensions.empty();
+}
+
+static bool
 device_is_suitable(
         const VkPhysicalDevice& device,
         const VkSurfaceKHR& surface)
 {
     bool is_suitable;
+    bool extensions_supported;
 
     struct QueueFamilyIndices family_indices;
 
@@ -102,6 +145,7 @@ device_is_suitable(
     VkPhysicalDeviceFeatures features;
 
     is_suitable = false;
+    extensions_supported = false;
     properties = {};
     features = {};
     family_indices = {0};
@@ -116,6 +160,7 @@ device_is_suitable(
             &features);
 
     family_indices = find_queue_family_indices(device, surface);
+    extensions_supported = device_extensions_are_supported(device);
 
     if ( ! features.geometryShader ) {
         Log::w("Geometry shader not found");
@@ -142,6 +187,11 @@ device_is_suitable(
         printf("\tpresentation_family_found: %u\n",
                 family_indices.presentation_family_found);
 #endif // NDEBUG
+        return false;
+    }
+
+    if ( ! extensions_supported) {
+        Log::w("Required extensions not supported");
         return false;
     }
 
