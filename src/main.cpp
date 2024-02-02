@@ -21,11 +21,19 @@ const char* g_program_name = "neotetris";
 std::string g_msg_temp = "";
 
 struct QueueFamilyIndices {
-    std::uint32_t graphics_family;
+    std::uint32_t graphics_family; // TODO rename to drawing_family
+    std::uint32_t presentation_family;
 };
 
+/*
+ * TODO call only once. Extract checking code out from this
+ * function. Add a separate found data field to QueueFamilyIndices
+ * for each family index.
+ */
 static struct QueueFamilyIndices
-find_queue_family_indices(const VkPhysicalDevice& device)
+find_queue_family_indices(
+        const VkPhysicalDevice& device,
+        const VkSurfaceKHR& surface)
 {
     struct QueueFamilyIndices family_indices;
 
@@ -33,6 +41,11 @@ find_queue_family_indices(const VkPhysicalDevice& device)
     std::uint32_t queue_family_count;
     std::vector<VkQueueFamilyProperties> queue_families;
 
+    VkBool32 has_presentation_support;
+    bool presentation_support_found;
+
+    has_presentation_support = false;
+    presentation_support_found = false;
     i = 0;
     queue_family_count = 0;
     queue_families.resize(0);
@@ -51,6 +64,20 @@ find_queue_family_indices(const VkPhysicalDevice& device)
             queue_families.data());
 
     for (i = 0; i < queue_families.size(); i++) {
+        vkGetPhysicalDeviceSurfaceSupportKHR(
+                device,
+                i,
+                surface,
+                &has_presentation_support);
+
+        if (( ! presentation_support_found) &&  has_presentation_support) {
+            // There is a high chance of presentation family being identical to
+            // graphics/drawing family. However, attempt to cover more cases by
+            // treating presentation family separately.
+            family_indices.presentation_family = i;
+            presentation_support_found = true;
+        }
+
         if (queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
             family_indices.graphics_family = i;
             break;
@@ -62,10 +89,14 @@ find_queue_family_indices(const VkPhysicalDevice& device)
         throw std::runtime_error(g_msg_temp);
     }
 
+    if ( ! presentation_support_found ) {
+        throw std::runtime_error("Failed to find presentation queue family");
+    }
+
     return family_indices;
 }
 
-static bool device_is_suitable(const VkPhysicalDevice& device)
+static bool device_is_suitable(const VkPhysicalDevice& device, const VkSurfaceKHR& surface)
 {
     bool is_suitable;
 
@@ -95,7 +126,7 @@ static bool device_is_suitable(const VkPhysicalDevice& device)
     }
 
     try {
-        (void) find_queue_family_indices(device);
+        (void) find_queue_family_indices(device, surface);
     } catch(std::runtime_error const& e) {
         g_msg_temp = "Exception while checking device suitability: ";
         g_msg_temp += e.what();
@@ -128,7 +159,7 @@ create_surface(SDL_Window* window, VkInstance instance)
 /*
  * Always selecting the first suitable device which gets found.
  */
-static VkPhysicalDevice pick_physical_device(VkInstance* vulkan_instance)
+static VkPhysicalDevice pick_physical_device(VkInstance* vulkan_instance, const VkSurfaceKHR& surface)
 {
     std::uint32_t device_count;
 
@@ -172,7 +203,7 @@ static VkPhysicalDevice pick_physical_device(VkInstance* vulkan_instance)
 #endif
 
     for (const VkPhysicalDevice& device : devices) {
-        if (device_is_suitable(device)) {
+        if (device_is_suitable(device, surface)) {
             physical_device = device;
             break;
         }
@@ -360,8 +391,8 @@ static void game(void)
     }
 
     surface = create_surface(main_window, vulkan_instance);
-    physical_device = pick_physical_device(&vulkan_instance);
-    family_indices = find_queue_family_indices(physical_device);
+    physical_device = pick_physical_device(&vulkan_instance, surface);
+    family_indices = find_queue_family_indices(physical_device, surface);
     logical_device = create_logical_device(physical_device, family_indices);
     vkGetDeviceQueue(
             logical_device,
