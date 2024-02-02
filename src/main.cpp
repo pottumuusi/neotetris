@@ -21,10 +21,10 @@ const char* g_program_name = "neotetris";
 std::string g_msg_temp = "";
 
 struct QueueFamilyIndices {
-    std::uint32_t graphics_family; // TODO rename to drawing_family
+    std::uint32_t drawing_family;
     std::uint32_t presentation_family;
 
-    std::uint32_t graphics_family_found; // TODO rename to drawing_family
+    std::uint32_t drawing_family_found;
     std::uint32_t presentation_family_found;
 };
 
@@ -80,8 +80,8 @@ find_queue_family_indices(
         }
 
         if (queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-            family_indices.graphics_family = i;
-            family_indices.graphics_family_found = 1;
+            family_indices.drawing_family = i;
+            family_indices.drawing_family_found = 1;
             break;
         }
     }
@@ -131,14 +131,14 @@ device_is_suitable(
     }
 
     is_suitable =
-        family_indices.graphics_family_found &&
+        family_indices.drawing_family_found &&
         family_indices.presentation_family_found;
     if ( ! is_suitable) {
         Log::w("Missing family index/indices");
 #ifndef NDEBUG
         printf("Family indices:\n");
-        printf("\tgraphics_family_found: %u\n",
-                family_indices.graphics_family_found);
+        printf("\tdrawing_family_found: %u\n",
+                family_indices.drawing_family_found);
         printf("\tpresentation_family_found: %u\n",
                 family_indices.presentation_family_found);
 #endif // NDEBUG
@@ -249,7 +249,7 @@ create_logical_device(
     device_create_info = {};
 
     queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queue_create_info.queueFamilyIndex = family_indices.graphics_family;
+    queue_create_info.queueFamilyIndex = family_indices.drawing_family;
     queue_create_info.queueCount = 1;
     queue_create_info.pQueuePriorities = &queue_priority;
 
@@ -407,7 +407,7 @@ static void game(void)
     logical_device = create_logical_device(physical_device, family_indices);
     vkGetDeviceQueue(
             logical_device,
-            family_indices.graphics_family,
+            family_indices.drawing_family,
             0,
             &graphics_queue);
 
