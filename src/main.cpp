@@ -170,7 +170,8 @@ create_surface(SDL_Window* window, VkInstance instance)
 /*
  * Always selecting the first suitable device which gets found.
  */
-static VkPhysicalDevice pick_physical_device(VkInstance* vulkan_instance, const VkSurfaceKHR& surface)
+static VkPhysicalDevice
+pick_physical_device(VkInstance* vulkan_instance, const VkSurfaceKHR& surface)
 {
     std::uint32_t device_count;
 
@@ -281,7 +282,8 @@ create_logical_device(
     return logical_device;
 }
 
-static void game(void)
+static void
+game(void)
 {
     std::int32_t ret;
     std::uint32_t flags;
