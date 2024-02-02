@@ -238,6 +238,7 @@ create_logical_device(
     VkResult result;
     VkDevice logical_device;
     VkDeviceQueueCreateInfo queue_create_info;
+    std::vector<VkDeviceQueueCreateInfo> queue_create_info_vector;
     VkPhysicalDeviceFeatures device_features;
     VkDeviceCreateInfo device_create_info;
 
@@ -252,10 +253,18 @@ create_logical_device(
     queue_create_info.queueFamilyIndex = family_indices.drawing_family;
     queue_create_info.queueCount = 1;
     queue_create_info.pQueuePriorities = &queue_priority;
+    queue_create_info_vector.push_back(queue_create_info);
+
+    queue_create_info = {};
+    queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queue_create_info.queueFamilyIndex = family_indices.presentation_family;
+    queue_create_info.queueCount = 1;
+    queue_create_info.pQueuePriorities = &queue_priority;
+    queue_create_info_vector.push_back(queue_create_info);
 
     device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    device_create_info.pQueueCreateInfos = &queue_create_info;
-    device_create_info.queueCreateInfoCount = 1;
+    device_create_info.pQueueCreateInfos = queue_create_info_vector.data();
+    device_create_info.queueCreateInfoCount = queue_create_info_vector.size();
     device_create_info.pEnabledFeatures = &device_features;
     device_create_info.enabledExtensionCount = 0;
     device_create_info.enabledLayerCount = 0;
@@ -303,6 +312,7 @@ static void game(void)
     VkPhysicalDevice physical_device;
     VkDevice logical_device;
     VkQueue drawing_queue;
+    VkQueue presentation_queue;
     VkSurfaceKHR surface;
 
     const std::string application_name = g_program_name;
@@ -332,6 +342,7 @@ static void game(void)
     physical_device = VK_NULL_HANDLE;
     logical_device = VK_NULL_HANDLE;
     drawing_queue = VK_NULL_HANDLE;
+    presentation_queue = VK_NULL_HANDLE;
     surface = VK_NULL_HANDLE;
 
     family_indices = {0};
@@ -411,6 +422,11 @@ static void game(void)
             family_indices.drawing_family,
             0,
             &drawing_queue);
+    vkGetDeviceQueue(
+            logical_device,
+            family_indices.presentation_family,
+            0,
+            &presentation_queue);
 
     // SDL createMainRenderer # <- necessary here?
 
