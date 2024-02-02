@@ -89,6 +89,14 @@ find_queue_family_indices(
     return family_indices;
 }
 
+static std::vector<const char*>
+get_required_device_extensions()
+{
+    return {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    };
+}
+
 static bool
 device_extensions_are_supported(const VkPhysicalDevice& device)
 {
@@ -97,14 +105,20 @@ device_extensions_are_supported(const VkPhysicalDevice& device)
 
     std::vector<VkExtensionProperties> available_extensions;
 
-    std::vector<std::string> required_extensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-    };
+    std::vector<const char*> required_extensions_char;
+
+    std::vector<std::string> required_extensions;
     std::vector<std::string>::iterator iterator;
 
     i = 0;
     extension_count = 0;
     available_extensions.resize(0);
+    required_extensions = {};
+    required_extensions_char = get_required_device_extensions();
+
+    for (const char* extension : required_extensions_char) {
+        required_extensions.push_back(extension);
+    }
 
     vkEnumerateDeviceExtensionProperties(
             device,
@@ -286,6 +300,8 @@ create_logical_device(
 {
     float queue_priority;
 
+    std::vector<const char*> required_extensions;
+
     VkResult result;
     VkDevice logical_device;
     VkDeviceQueueCreateInfo queue_create_info;
@@ -299,6 +315,7 @@ create_logical_device(
     queue_create_info = {};
     device_features = {};
     device_create_info = {};
+    required_extensions = get_required_device_extensions();
 
     queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
     queue_create_info.queueFamilyIndex = family_indices.drawing_family;
@@ -317,7 +334,8 @@ create_logical_device(
     device_create_info.pQueueCreateInfos = queue_create_info_vector.data();
     device_create_info.queueCreateInfoCount = queue_create_info_vector.size();
     device_create_info.pEnabledFeatures = &device_features;
-    device_create_info.enabledExtensionCount = 0;
+    device_create_info.ppEnabledExtensionNames = required_extensions.data();
+    device_create_info.enabledExtensionCount = required_extensions.size();
     device_create_info.enabledLayerCount = 0;
 
     result = vkCreateDevice(
