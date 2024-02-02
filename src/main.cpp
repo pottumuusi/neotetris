@@ -302,7 +302,7 @@ static void game(void)
     VkInstance vulkan_instance;
     VkPhysicalDevice physical_device;
     VkDevice logical_device;
-    VkQueue graphics_queue;
+    VkQueue drawing_queue;
     VkSurfaceKHR surface;
 
     const std::string application_name = g_program_name;
@@ -331,7 +331,7 @@ static void game(void)
     vulkan_instance = {};
     physical_device = VK_NULL_HANDLE;
     logical_device = VK_NULL_HANDLE;
-    graphics_queue = VK_NULL_HANDLE;
+    drawing_queue = VK_NULL_HANDLE;
     surface = VK_NULL_HANDLE;
 
     family_indices = {0};
@@ -410,7 +410,7 @@ static void game(void)
             logical_device,
             family_indices.drawing_family,
             0,
-            &graphics_queue);
+            &drawing_queue);
 
     // SDL createMainRenderer # <- necessary here?
 
