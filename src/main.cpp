@@ -1,4 +1,6 @@
+#include <algorithm>
 #include <chrono>
+#include <limits>
 #include <thread>
 #include <vector>
 
@@ -411,6 +413,194 @@ create_logical_device(
     return logical_device;
 }
 
+static VkSurfaceFormatKHR
+pick_swap_surface_format(
+        const std::vector<VkSurfaceFormatKHR>& available_formats)
+{
+    bool should_pick;
+
+    should_pick = false;
+
+    for (const VkSurfaceFormatKHR& format : available_formats) {
+        should_pick =
+            VK_FORMAT_B8G8R8A8_SRGB == format.format &&
+            VK_COLOR_SPACE_SRGB_NONLINEAR_KHR == format.colorSpace;
+        if (should_pick) {
+            return format;
+        }
+    }
+
+    Log::w("Could not find the preferred format combination");
+
+    return available_formats[0];
+}
+
+static VkPresentModeKHR
+pick_swap_present_mode(std::vector<VkPresentModeKHR> present_modes)
+{
+    for (const VkPresentModeKHR& mode : present_modes) {
+        if (VK_PRESENT_MODE_FIFO_KHR == mode) {
+            // VK_PRESENT_MODE_FIFO_KHR is told to be quaranteed to be
+            // available.
+            return VK_PRESENT_MODE_FIFO_KHR;
+        }
+    }
+
+    throw std::runtime_error("VK_PRESENT_MODE_FIFO_KHR not available");
+}
+
+static VkExtent2D
+pick_swap_extent(
+        const VkSurfaceCapabilitiesKHR& capabilities,
+        SDL_Window* window)
+{
+    int pixels_drawable_height;
+    int pixels_drawable_width;
+
+    VkExtent2D extent;
+
+    extent = {};
+
+    // Special (rare) value uint32 max tells that swap chain resolution can
+    // differ from window resolution.
+    if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
+        return capabilities.currentExtent;
+    }
+
+    SDL_Vulkan_GetDrawableSize(
+            window,
+            &pixels_drawable_width,
+            &pixels_drawable_height);
+
+    extent = {
+        static_cast<uint32_t>(pixels_drawable_width),
+        static_cast<uint32_t>(pixels_drawable_height)
+    };
+
+    extent.width = std::clamp(
+            extent.width,
+            capabilities.minImageExtent.width,
+            capabilities.maxImageExtent.width);
+    extent.height = std::clamp(
+            extent.height,
+            capabilities.minImageExtent.height,
+            capabilities.maxImageExtent.height);
+
+    return extent;
+}
+
+static VkSwapchainKHR
+create_swap_chain(
+        const VkPhysicalDevice& device,
+        const VkDevice& logical_device,
+        const VkSurfaceKHR& surface,
+        SDL_Window* window)
+{
+    bool condition;
+    std::uint32_t image_count;
+
+    std::uint32_t family_index_count;
+    const std::uint32_t* family_index_array_base;
+
+    struct QueueFamilyIndices family_indices;
+    struct SurfaceProperties surface_properties;
+
+    VkResult result;
+
+    VkSurfaceFormatKHR format;
+    VkPresentModeKHR present_mode;
+    VkExtent2D extent;
+
+    VkSharingMode sharing_mode;
+
+    VkSwapchainKHR swapchain;
+    VkSwapchainCreateInfoKHR chain_create_info;
+
+    condition = false;
+    image_count = 0;
+
+    sharing_mode = VK_SHARING_MODE_MAX_ENUM;
+
+    family_index_count = 0;
+
+    result = VK_ERROR_UNKNOWN;
+    family_indices = {0};
+    surface_properties = {0};
+    format = {};
+    present_mode = {};
+    extent = {};
+    swapchain = {};
+    chain_create_info = {};
+
+    std::uint32_t family_index_array[2] = {
+        family_indices.drawing_family,
+        family_indices.presentation_family,
+    };
+
+    surface_properties = find_surface_properties(device, surface);
+    format = pick_swap_surface_format(surface_properties.formats);
+    present_mode = pick_swap_present_mode(surface_properties.present_modes);
+    extent = pick_swap_extent(surface_properties.capabilities, window);
+    family_indices = find_queue_family_indices(device, surface);
+
+    sharing_mode = VK_SHARING_MODE_EXCLUSIVE;
+    family_index_count = 0;
+    family_index_array_base = nullptr;
+    condition =
+        family_indices.drawing_family !=
+        family_indices.presentation_family;
+    if (condition) {
+        // If drawing and presentation have separate queues, then using
+        // concurrent mode to avoid writing image ownership transfer code.
+        sharing_mode = VK_SHARING_MODE_CONCURRENT;
+        family_index_count = 2;
+        family_index_array_base = family_index_array;
+    }
+
+    image_count = surface_properties.capabilities.minImageCount + 1;
+
+    // 0 maxImageCount stands for 'no maximum'
+    condition =
+        surface_properties.capabilities.maxImageCount > 0 &&
+        image_count > surface_properties.capabilities.maxImageCount;
+    if (condition) {
+        image_count = surface_properties.capabilities.maxImageCount;
+    }
+
+    chain_create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    chain_create_info.surface = surface;
+    chain_create_info.minImageCount = image_count;
+    chain_create_info.imageFormat = format.format;
+    chain_create_info.imageColorSpace = format.colorSpace;
+    chain_create_info.imageExtent = extent;
+    chain_create_info.imageArrayLayers = 1;
+    chain_create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    chain_create_info.imageSharingMode = sharing_mode;
+    chain_create_info.queueFamilyIndexCount = family_index_count;
+    chain_create_info.pQueueFamilyIndices = family_index_array_base;
+
+    // Specifying currentTransform in order to get no transform
+    chain_create_info.preTransform =
+        surface_properties.capabilities.currentTransform;
+    chain_create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    chain_create_info.presentMode = present_mode;
+    chain_create_info.clipped = VK_TRUE;
+    chain_create_info.oldSwapchain = VK_NULL_HANDLE;
+
+    result = vkCreateSwapchainKHR(
+            logical_device,
+            &chain_create_info,
+            nullptr,
+            &swapchain);
+    if (VK_SUCCESS != result) {
+        g_msg_temp = "Failed to create swapchain: ";
+        g_msg_temp += result;
+        throw std::runtime_error(g_msg_temp);
+    }
+
+    return swapchain;
+}
+
 static void
 game(void)
 {
@@ -445,6 +635,7 @@ game(void)
     VkQueue drawing_queue;
     VkQueue presentation_queue;
     VkSurfaceKHR surface;
+    VkSwapchainKHR swapchain;
 
     const std::string application_name = g_program_name;
     const std::string engine_name = "No engine";
@@ -475,6 +666,7 @@ game(void)
     drawing_queue = VK_NULL_HANDLE;
     presentation_queue = VK_NULL_HANDLE;
     surface = VK_NULL_HANDLE;
+    swapchain = VK_NULL_HANDLE;
 
     family_indices = {0};
 
@@ -559,6 +751,12 @@ game(void)
             0,
             &presentation_queue);
 
+    swapchain = create_swap_chain(
+            physical_device,
+            logical_device,
+            surface,
+            main_window);
+
     // SDL createMainRenderer # <- necessary here?
 
     // SDL setRenderDrawColor # <- necessary here?
@@ -567,6 +765,7 @@ game(void)
     msg_temp += " shutting down";
     Log::i(msg_temp);
 
+    vkDestroySwapchainKHR(logical_device, swapchain, nullptr);
     vkDestroySurfaceKHR(vulkan_instance, surface, nullptr);
     vkDestroyDevice(logical_device, nullptr);
     vkDestroyInstance(vulkan_instance, nullptr);
