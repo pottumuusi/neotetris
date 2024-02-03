@@ -494,7 +494,9 @@ create_swap_chain(
         const VkPhysicalDevice& device,
         const VkDevice& logical_device,
         const VkSurfaceKHR& surface,
-        SDL_Window* window)
+        SDL_Window* window,
+        VkFormat& swapchain_image_format,
+        VkExtent2D& swapchain_extent)
 {
     bool condition;
     std::uint32_t image_count;
@@ -598,6 +600,9 @@ create_swap_chain(
         throw std::runtime_error(g_msg_temp);
     }
 
+    swapchain_image_format = format.format;
+    swapchain_extent = extent;
+
     return swapchain;
 }
 
@@ -636,6 +641,11 @@ game(void)
     VkQueue presentation_queue;
     VkSurfaceKHR surface;
     VkSwapchainKHR swapchain;
+    VkFormat swapchain_image_format;
+    VkExtent2D swapchain_extent;
+
+    std::vector<VkImage> swapchain_images;
+    std::uint32_t swapchain_image_count;
 
     const std::string application_name = g_program_name;
     const std::string engine_name = "No engine";
@@ -667,6 +677,11 @@ game(void)
     presentation_queue = VK_NULL_HANDLE;
     surface = VK_NULL_HANDLE;
     swapchain = VK_NULL_HANDLE;
+    swapchain_image_format = VK_FORMAT_UNDEFINED;
+    swapchain_extent = {};
+
+    swapchain_images.resize(0);
+    swapchain_image_count = 0;
 
     family_indices = {0};
 
@@ -755,7 +770,21 @@ game(void)
             physical_device,
             logical_device,
             surface,
-            main_window);
+            main_window,
+            swapchain_image_format,
+            swapchain_extent);
+
+    vkGetSwapchainImagesKHR(
+            logical_device,
+            swapchain,
+            &swapchain_image_count,
+            nullptr);
+    swapchain_images.resize(swapchain_image_count);
+    vkGetSwapchainImagesKHR(
+            logical_device,
+            swapchain,
+            &swapchain_image_count,
+            swapchain_images.data());
 
     // SDL createMainRenderer # <- necessary here?
 
