@@ -606,6 +606,51 @@ create_swap_chain(
     return swapchain;
 }
 
+static std::vector<VkImageView>
+create_image_views(
+        const VkDevice& logical_device,
+        const std::vector<VkImage>& swapchain_images,
+        const VkFormat& swapchain_image_format)
+{
+    VkImageViewCreateInfo create_info;
+    std::vector<VkImageView> image_views;
+
+    VkResult result;
+
+    create_info = {};
+    image_views.resize(0);
+    result = VK_ERROR_UNKNOWN;
+
+    image_views.resize(swapchain_images.size());
+
+    for (size_t i = 0; i < swapchain_images.size(); i++) {
+        create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        create_info.image = swapchain_images[i];
+        create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        create_info.format = swapchain_image_format;
+        create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        create_info.subresourceRange.baseMipLevel = 0;
+        create_info.subresourceRange.levelCount = 1;
+        create_info.subresourceRange.baseArrayLayer = 0;
+        create_info.subresourceRange.layerCount = 1;
+
+        result = vkCreateImageView(
+                logical_device,
+                &create_info,
+                nullptr,
+                &image_views[i]);
+        if (VK_SUCCESS != result) {
+            throw std::runtime_error("Failed to create image view");
+        }
+    }
+
+    return image_views;
+}
+
 static void
 game(void)
 {
@@ -644,6 +689,7 @@ game(void)
     VkFormat swapchain_image_format;
     VkExtent2D swapchain_extent;
 
+    std::vector<VkImageView> swapchain_image_views;
     std::vector<VkImage> swapchain_images;
     std::uint32_t swapchain_image_count;
 
@@ -680,6 +726,7 @@ game(void)
     swapchain_image_format = VK_FORMAT_UNDEFINED;
     swapchain_extent = {};
 
+    swapchain_image_views.resize(0);
     swapchain_images.resize(0);
     swapchain_image_count = 0;
 
@@ -786,6 +833,11 @@ game(void)
             &swapchain_image_count,
             swapchain_images.data());
 
+    swapchain_image_views = create_image_views(
+            logical_device,
+            swapchain_images,
+            swapchain_image_format);
+
     // SDL createMainRenderer # <- necessary here?
 
     // SDL setRenderDrawColor # <- necessary here?
@@ -793,6 +845,10 @@ game(void)
     msg_temp = g_program_name;
     msg_temp += " shutting down";
     Log::i(msg_temp);
+
+    for (VkImageView image_view : swapchain_image_views) {
+        vkDestroyImageView(logical_device, image_view, nullptr);
+    }
 
     vkDestroySwapchainKHR(logical_device, swapchain, nullptr);
     vkDestroySurfaceKHR(vulkan_instance, surface, nullptr);
