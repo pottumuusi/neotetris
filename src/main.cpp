@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <chrono>
+#include <fstream>
 #include <limits>
 #include <thread>
 #include <vector>
@@ -651,6 +652,87 @@ create_image_views(
     return image_views;
 }
 
+static std::vector<char>
+read_file(const std::string& filename)
+{
+    size_t file_size;
+
+    std::vector<char> buffer;
+
+    file_size = 0;
+    buffer.resize(0);
+
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+    if ( ! file.is_open()) {
+        throw std::runtime_error("Failed to open file");
+    }
+
+    file_size = (size_t) file.tellg();
+    buffer.resize(file_size);
+
+    g_msg_temp = "Reading file with size of: ";
+    g_msg_temp += std::to_string(file_size);
+    Log::d(g_msg_temp);
+
+    file.seekg(0);
+    file.read(buffer.data(), file_size);
+
+    file.close();
+
+    return buffer;
+}
+
+static VkShaderModule
+create_shader_module(
+        const VkDevice& logical_device,
+        const std::vector<char>& code)
+{
+    VkResult result;
+
+    VkShaderModuleCreateInfo create_info;
+    VkShaderModule shader_module;
+
+    create_info = {};
+    shader_module = nullptr;
+    result = VK_ERROR_UNKNOWN;
+
+    create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    create_info.codeSize = code.size();
+    create_info.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+    result = vkCreateShaderModule(logical_device, &create_info, nullptr, &shader_module);
+    if (VK_SUCCESS != result) {
+        throw std::runtime_error("Failed to create shader module");
+    }
+
+    return shader_module;
+}
+
+static void
+create_graphics_pipeline(const VkDevice& logical_device)
+{
+    std::vector<char> shader_code_vert;
+    std::vector<char> shader_code_frag;
+    VkShaderModule shader_module_vert;
+    VkShaderModule shader_module_frag;
+
+    shader_code_vert = read_file("shaders/vert.spv");
+    shader_code_frag = read_file("shaders/frag.spv");
+
+    shader_module_vert = create_shader_module(
+            logical_device,
+            shader_code_vert);
+    shader_module_frag = create_shader_module(
+            logical_device,
+            shader_code_frag);
+
+    // TODO finishing the implementation here
+
+    vkDestroyShaderModule(logical_device, shader_module_vert, nullptr);
+    vkDestroyShaderModule(logical_device, shader_module_frag, nullptr);
+}
+
 static void
 game(void)
 {
@@ -837,6 +919,8 @@ game(void)
             logical_device,
             swapchain_images,
             swapchain_image_format);
+
+    create_graphics_pipeline(logical_device);
 
     // SDL createMainRenderer # <- necessary here?
 
