@@ -712,10 +712,21 @@ create_shader_module(
 static void
 create_graphics_pipeline(const VkDevice& logical_device)
 {
+    std::string entrypoint = "main";
     std::vector<char> shader_code_vert;
     std::vector<char> shader_code_frag;
     VkShaderModule shader_module_vert;
     VkShaderModule shader_module_frag;
+
+    VkPipelineShaderStageCreateInfo shader_stage_info_vert;
+    VkPipelineShaderStageCreateInfo shader_stage_info_frag;
+    VkPipelineShaderStageCreateInfo shader_stages[] = {
+        shader_stage_info_vert,
+        shader_stage_info_frag,
+    };
+
+    shader_stage_info_vert = {};
+    shader_stage_info_frag = {};
 
     shader_code_vert = read_file("shaders/vert.spv");
     shader_code_frag = read_file("shaders/frag.spv");
@@ -727,7 +738,17 @@ create_graphics_pipeline(const VkDevice& logical_device)
             logical_device,
             shader_code_frag);
 
-    // TODO finishing the implementation here
+    shader_stage_info_vert.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shader_stage_info_vert.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    shader_stage_info_vert.module = shader_module_vert;
+    shader_stage_info_vert.pName = entrypoint.c_str();
+
+    shader_stage_info_frag.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shader_stage_info_frag.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    shader_stage_info_frag.module = shader_module_frag;
+    shader_stage_info_frag.pName = entrypoint.c_str();
 
     vkDestroyShaderModule(logical_device, shader_module_vert, nullptr);
     vkDestroyShaderModule(logical_device, shader_module_frag, nullptr);
