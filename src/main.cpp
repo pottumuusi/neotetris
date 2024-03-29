@@ -720,10 +720,7 @@ create_graphics_pipeline(const VkDevice& logical_device)
 
     VkPipelineShaderStageCreateInfo shader_stage_info_vert;
     VkPipelineShaderStageCreateInfo shader_stage_info_frag;
-    VkPipelineShaderStageCreateInfo shader_stages[] = {
-        shader_stage_info_vert,
-        shader_stage_info_frag,
-    };
+    VkPipelineShaderStageCreateInfo shader_stages[2];
 
     shader_stage_info_vert = {};
     shader_stage_info_frag = {};
@@ -749,6 +746,9 @@ create_graphics_pipeline(const VkDevice& logical_device)
     shader_stage_info_frag.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     shader_stage_info_frag.module = shader_module_frag;
     shader_stage_info_frag.pName = entrypoint.c_str();
+
+    shader_stages[0] = shader_stage_info_vert;
+    shader_stages[1] = shader_stage_info_frag;
 
     vkDestroyShaderModule(logical_device, shader_module_vert, nullptr);
     vkDestroyShaderModule(logical_device, shader_module_frag, nullptr);
