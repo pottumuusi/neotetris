@@ -709,8 +709,42 @@ create_shader_module(
     return shader_module;
 }
 
+static VkPipelineLayout
+create_pipeline_layout(const VkDevice& logical_device)
+{
+    VkResult result;
+
+    VkPipelineLayout pipeline_layout;
+    VkPipelineLayoutCreateInfo pipeline_layout_info;
+
+    result = VK_ERROR_UNKNOWN;
+
+    pipeline_layout = {};
+    pipeline_layout_info = {};
+
+    pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipeline_layout_info.setLayoutCount = 0;
+    pipeline_layout_info.pSetLayouts = nullptr;
+    pipeline_layout_info.pushConstantRangeCount = 0;
+    pipeline_layout_info.pPushConstantRanges = nullptr;
+
+    result = vkCreatePipelineLayout(
+            logical_device,
+            &pipeline_layout_info,
+            nullptr,
+            &pipeline_layout);
+    if (VK_SUCCESS != result) {
+        std::runtime_error("Failed to create pipeline layout");
+    }
+
+    return pipeline_layout;
+}
+
 static void
-create_graphics_pipeline(const VkDevice& logical_device)
+create_graphics_pipeline(
+        const VkDevice& logical_device,
+        const VkExtent2D& swapchain_extent,
+        const VkPipelineLayout& pipeline_layout)
 {
     std::string entrypoint = "main";
     std::vector<char> shader_code_vert;
@@ -722,8 +756,34 @@ create_graphics_pipeline(const VkDevice& logical_device)
     VkPipelineShaderStageCreateInfo shader_stage_info_frag;
     VkPipelineShaderStageCreateInfo shader_stages[2];
 
+    VkPipelineVertexInputStateCreateInfo vertex_input_info;
+    VkPipelineInputAssemblyStateCreateInfo input_assembly;
+    VkPipelineRasterizationStateCreateInfo rasterizer;
+    VkPipelineMultisampleStateCreateInfo multisampling;
+    VkPipelineColorBlendAttachmentState color_blend_attachment;
+    VkPipelineColorBlendStateCreateInfo color_blending;
+    VkPipelineDynamicStateCreateInfo dynamic_state;
+    VkPipelineViewportStateCreateInfo viewport_state;
+    VkViewport viewport;
+    VkRect2D scissor;
+
+    const std::vector<VkDynamicState> dynamic_states = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR
+    };
+
     shader_stage_info_vert = {};
     shader_stage_info_frag = {};
+    color_blend_attachment = {};
+    vertex_input_info = {};
+    input_assembly = {};
+    viewport_state = {};
+    color_blending = {};
+    dynamic_state = {};
+    multisampling = {};
+    rasterizer = {};
+    viewport = {};
+    scissor = {};
 
     shader_code_vert = read_file("shaders/vert.spv");
     shader_code_frag = read_file("shaders/frag.spv");
@@ -749,6 +809,66 @@ create_graphics_pipeline(const VkDevice& logical_device)
 
     shader_stages[0] = shader_stage_info_vert;
     shader_stages[1] = shader_stage_info_frag;
+
+    vertex_input_info.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertex_input_info.vertexBindingDescriptionCount = 0;
+    vertex_input_info.pVertexBindingDescriptions = nullptr;
+    vertex_input_info.vertexAttributeDescriptionCount = 0;
+    vertex_input_info.pVertexAttributeDescriptions = nullptr;
+
+    input_assembly.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    input_assembly.primitiveRestartEnable = VK_FALSE;
+
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = (float) swapchain_extent.width;
+    viewport.height = (float) swapchain_extent.height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    scissor.offset = {0, 0};
+    scissor.extent = swapchain_extent;
+
+    dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamic_state.dynamicStateCount =
+        static_cast<uint32_t>(dynamic_states.size());
+    dynamic_state.pDynamicStates = dynamic_states.data();
+
+    viewport_state.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewport_state.viewportCount = 1;
+    viewport_state.scissorCount = 1;
+
+    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer.depthClampEnable = VK_FALSE;
+    rasterizer.rasterizerDiscardEnable = VK_FALSE;
+    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizer.lineWidth = 1.0f;
+    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterizer.depthBiasEnable = VK_FALSE;
+    rasterizer.depthBiasConstantFactor = 0.0f;
+    rasterizer.depthBiasClamp = 0.0f;
+    rasterizer.depthBiasSlopeFactor = 0.0f;
+
+    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampling.sampleShadingEnable = VK_FALSE;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+    color_blend_attachment.colorWriteMask =
+        VK_COLOR_COMPONENT_R_BIT |
+        VK_COLOR_COMPONENT_G_BIT |
+        VK_COLOR_COMPONENT_B_BIT |
+        VK_COLOR_COMPONENT_A_BIT;
+    color_blend_attachment.blendEnable = VK_FALSE;
+
+    color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    color_blending.logicOpEnable = VK_FALSE;
+    color_blending.attachmentCount = 1;
+    color_blending.pAttachments = &color_blend_attachment;
 
     vkDestroyShaderModule(logical_device, shader_module_vert, nullptr);
     vkDestroyShaderModule(logical_device, shader_module_frag, nullptr);
@@ -792,6 +912,8 @@ game(void)
     VkFormat swapchain_image_format;
     VkExtent2D swapchain_extent;
 
+    VkPipelineLayout pipeline_layout;
+
     std::vector<VkImageView> swapchain_image_views;
     std::vector<VkImage> swapchain_images;
     std::uint32_t swapchain_image_count;
@@ -828,6 +950,8 @@ game(void)
     swapchain = VK_NULL_HANDLE;
     swapchain_image_format = VK_FORMAT_UNDEFINED;
     swapchain_extent = {};
+
+    pipeline_layout = {};
 
     swapchain_image_views.resize(0);
     swapchain_images.resize(0);
@@ -941,7 +1065,12 @@ game(void)
             swapchain_images,
             swapchain_image_format);
 
-    create_graphics_pipeline(logical_device);
+    pipeline_layout = create_pipeline_layout(logical_device);
+
+    create_graphics_pipeline(
+            logical_device,
+            swapchain_extent,
+            pipeline_layout);
 
     // SDL createMainRenderer # <- necessary here?
 
@@ -950,6 +1079,8 @@ game(void)
     msg_temp = g_program_name;
     msg_temp += " shutting down";
     Log::i(msg_temp);
+
+    vkDestroyPipelineLayout(logical_device, pipeline_layout, nullptr);
 
     for (VkImageView image_view : swapchain_image_views) {
         vkDestroyImageView(logical_device, image_view, nullptr);
