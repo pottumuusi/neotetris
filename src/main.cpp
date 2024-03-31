@@ -709,6 +709,59 @@ create_shader_module(
     return shader_module;
 }
 
+static VkRenderPass
+create_render_pass(
+        const VkDevice& logical_device,
+        const VkFormat swapchain_image_format)
+{
+    VkResult result;
+    VkRenderPass render_pass;
+    VkSubpassDescription subpass;
+    VkRenderPassCreateInfo render_pass_info;
+    VkAttachmentDescription color_attachment;
+    VkAttachmentReference color_attachment_ref;
+
+    result = VK_ERROR_UNKNOWN;
+    subpass = {};
+    render_pass = {};
+    render_pass_info = {};
+    color_attachment = {};
+    color_attachment_ref = {};
+
+    color_attachment.format = swapchain_image_format;
+    color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    color_attachment_ref.attachment = 0;
+    color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &color_attachment_ref;
+
+    render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    render_pass_info.attachmentCount = 1;
+    render_pass_info.pAttachments = &color_attachment;
+    render_pass_info.subpassCount = 1;
+    render_pass_info.pSubpasses = &subpass;
+
+    result = vkCreateRenderPass(
+            logical_device,
+            &render_pass_info,
+            nullptr,
+            &render_pass);
+    if (VK_SUCCESS != result) {
+        throw std::runtime_error("Failed to create render pass");
+    }
+
+    return render_pass;
+}
+
 static VkPipelineLayout
 create_pipeline_layout(const VkDevice& logical_device)
 {
@@ -911,7 +964,7 @@ game(void)
     VkSwapchainKHR swapchain;
     VkFormat swapchain_image_format;
     VkExtent2D swapchain_extent;
-
+    VkRenderPass render_pass;
     VkPipelineLayout pipeline_layout;
 
     std::vector<VkImageView> swapchain_image_views;
@@ -950,7 +1003,7 @@ game(void)
     swapchain = VK_NULL_HANDLE;
     swapchain_image_format = VK_FORMAT_UNDEFINED;
     swapchain_extent = {};
-
+    render_pass = {};
     pipeline_layout = {};
 
     swapchain_image_views.resize(0);
@@ -1065,6 +1118,10 @@ game(void)
             swapchain_images,
             swapchain_image_format);
 
+    render_pass = create_render_pass(
+            logical_device,
+            swapchain_image_format);
+
     pipeline_layout = create_pipeline_layout(logical_device);
 
     create_graphics_pipeline(
@@ -1081,6 +1138,7 @@ game(void)
     Log::i(msg_temp);
 
     vkDestroyPipelineLayout(logical_device, pipeline_layout, nullptr);
+    vkDestroyRenderPass(logical_device, render_pass, nullptr);
 
     for (VkImageView image_view : swapchain_image_views) {
         vkDestroyImageView(logical_device, image_view, nullptr);
