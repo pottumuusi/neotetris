@@ -793,17 +793,20 @@ create_pipeline_layout(const VkDevice& logical_device)
     return pipeline_layout;
 }
 
-static void
+static VkPipeline
 create_graphics_pipeline(
         const VkDevice& logical_device,
         const VkExtent2D& swapchain_extent,
-        const VkPipelineLayout& pipeline_layout)
+        const VkPipelineLayout& pipeline_layout,
+        const VkRenderPass& render_pass)
 {
     std::string entrypoint = "main";
     std::vector<char> shader_code_vert;
     std::vector<char> shader_code_frag;
     VkShaderModule shader_module_vert;
     VkShaderModule shader_module_frag;
+
+    VkResult result;
 
     VkPipelineShaderStageCreateInfo shader_stage_info_vert;
     VkPipelineShaderStageCreateInfo shader_stage_info_frag;
@@ -820,6 +823,9 @@ create_graphics_pipeline(
     VkViewport viewport;
     VkRect2D scissor;
 
+    VkPipeline graphics_pipeline;
+    VkGraphicsPipelineCreateInfo pipeline_info;
+
     const std::vector<VkDynamicState> dynamic_states = {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR
@@ -828,15 +834,19 @@ create_graphics_pipeline(
     shader_stage_info_vert = {};
     shader_stage_info_frag = {};
     color_blend_attachment = {};
+    graphics_pipeline = {};
     vertex_input_info = {};
     input_assembly = {};
     viewport_state = {};
     color_blending = {};
     dynamic_state = {};
     multisampling = {};
+    pipeline_info = {};
     rasterizer = {};
     viewport = {};
     scissor = {};
+
+    result = VK_ERROR_UNKNOWN;
 
     shader_code_vert = read_file("shaders/vert.spv");
     shader_code_frag = read_file("shaders/frag.spv");
@@ -923,8 +933,38 @@ create_graphics_pipeline(
     color_blending.attachmentCount = 1;
     color_blending.pAttachments = &color_blend_attachment;
 
+    pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipeline_info.stageCount = 2;
+    pipeline_info.pStages = shader_stages;
+    pipeline_info.pVertexInputState = &vertex_input_info;
+    pipeline_info.pInputAssemblyState = &input_assembly;
+    pipeline_info.pViewportState = &viewport_state;
+    pipeline_info.pRasterizationState = &rasterizer;
+    pipeline_info.pMultisampleState = &multisampling;
+    pipeline_info.pDepthStencilState = nullptr;
+    pipeline_info.pColorBlendState = &color_blending;
+    pipeline_info.pDynamicState = &dynamic_state;
+    pipeline_info.layout = pipeline_layout;
+    pipeline_info.renderPass = render_pass;
+    pipeline_info.subpass = 0;
+    pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
+    pipeline_info.basePipelineIndex = -1;
+
+    result = vkCreateGraphicsPipelines(
+            logical_device,
+            VK_NULL_HANDLE,
+            1,
+            &pipeline_info,
+            nullptr,
+            &graphics_pipeline);
+    if (VK_SUCCESS != result) {
+        throw std::runtime_error("Failed to create graphics pipeline");
+    }
+
     vkDestroyShaderModule(logical_device, shader_module_vert, nullptr);
     vkDestroyShaderModule(logical_device, shader_module_frag, nullptr);
+
+    return graphics_pipeline;
 }
 
 static void
@@ -966,6 +1006,7 @@ game(void)
     VkExtent2D swapchain_extent;
     VkRenderPass render_pass;
     VkPipelineLayout pipeline_layout;
+    VkPipeline graphics_pipeline;
 
     std::vector<VkImageView> swapchain_image_views;
     std::vector<VkImage> swapchain_images;
@@ -1005,6 +1046,7 @@ game(void)
     swapchain_extent = {};
     render_pass = {};
     pipeline_layout = {};
+    graphics_pipeline = {};
 
     swapchain_image_views.resize(0);
     swapchain_images.resize(0);
@@ -1124,10 +1166,12 @@ game(void)
 
     pipeline_layout = create_pipeline_layout(logical_device);
 
-    create_graphics_pipeline(
+    Log::i("Creating Vulkan graphics pipeline");
+    graphics_pipeline = create_graphics_pipeline(
             logical_device,
             swapchain_extent,
-            pipeline_layout);
+            pipeline_layout,
+            render_pass);
 
     // SDL createMainRenderer # <- necessary here?
 
@@ -1137,6 +1181,7 @@ game(void)
     msg_temp += " shutting down";
     Log::i(msg_temp);
 
+    vkDestroyPipeline(logical_device, graphics_pipeline, nullptr);
     vkDestroyPipelineLayout(logical_device, pipeline_layout, nullptr);
     vkDestroyRenderPass(logical_device, render_pass, nullptr);
 
