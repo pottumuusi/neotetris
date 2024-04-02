@@ -967,6 +967,51 @@ create_graphics_pipeline(
     return graphics_pipeline;
 }
 
+static std::vector<VkFramebuffer>
+create_framebuffers(
+        const VkDevice& logical_device,
+        const std::vector<VkImageView>& swapchain_image_views,
+        const VkRenderPass& render_pass,
+        const VkExtent2D swapchain_extent)
+{
+    VkResult result;
+
+    std::vector<VkFramebuffer> framebuffers;
+
+    VkFramebufferCreateInfo framebuffer_info;
+    VkImageView attachments[1];
+
+    result = VK_ERROR_UNKNOWN;
+    framebuffer_info = {};
+    framebuffers.resize(0);
+    attachments[0] = VK_NULL_HANDLE;
+
+    framebuffers.resize(swapchain_image_views.size());
+
+    for (size_t i = 0; i < swapchain_image_views.size(); i++) {
+        attachments[0] = swapchain_image_views[i];
+
+        framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebuffer_info.renderPass = render_pass;
+        framebuffer_info.attachmentCount = 1;
+        framebuffer_info.pAttachments = attachments;
+        framebuffer_info.width = swapchain_extent.width;
+        framebuffer_info.height = swapchain_extent.height;
+        framebuffer_info.layers = 1;
+
+        result = vkCreateFramebuffer(
+                logical_device,
+                &framebuffer_info,
+                nullptr,
+                &framebuffers[i]);
+        if (VK_SUCCESS != result) {
+            throw std::runtime_error("Failed to create framebuffer");
+        }
+    }
+
+    return framebuffers;
+}
+
 static void
 game(void)
 {
@@ -975,6 +1020,7 @@ game(void)
 
     std::uint32_t extension_count;
     std::vector<const char*> extension_names;
+    std::vector<VkFramebuffer> swapchain_framebuffers;
 
     std::string msg_temp; // TODO start using g_msg_temp instead
     std::string hint_name;
@@ -1020,6 +1066,7 @@ game(void)
 
     extension_count = 0;
     extension_names.resize(0);
+    swapchain_framebuffers.resize(0);
 
     hint_name = SDL_HINT_RENDER_SCALE_QUALITY;
     hint_value = "1";
@@ -1173,6 +1220,12 @@ game(void)
             pipeline_layout,
             render_pass);
 
+    swapchain_framebuffers = create_framebuffers(
+            logical_device,
+            swapchain_image_views,
+            render_pass,
+            swapchain_extent);
+
     // SDL createMainRenderer # <- necessary here?
 
     // SDL setRenderDrawColor # <- necessary here?
@@ -1180,6 +1233,10 @@ game(void)
     msg_temp = g_program_name;
     msg_temp += " shutting down";
     Log::i(msg_temp);
+
+    for (VkFramebuffer framebuffer : swapchain_framebuffers) {
+        vkDestroyFramebuffer(logical_device, framebuffer, nullptr);
+    }
 
     vkDestroyPipeline(logical_device, graphics_pipeline, nullptr);
     vkDestroyPipelineLayout(logical_device, pipeline_layout, nullptr);
