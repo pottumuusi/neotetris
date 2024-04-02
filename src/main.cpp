@@ -1012,6 +1012,34 @@ create_framebuffers(
     return framebuffers;
 }
 
+static VkCommandPool
+create_command_pool(
+        const VkDevice& logical_device,
+        const struct QueueFamilyIndices& family_indices)
+{
+    VkResult result;
+    VkCommandPool command_pool;
+    VkCommandPoolCreateInfo pool_info;
+
+    result = VK_ERROR_UNKNOWN;
+    pool_info = {};
+
+    pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    pool_info.queueFamilyIndex = family_indices.drawing_family;
+
+    result = vkCreateCommandPool(
+            logical_device,
+            &pool_info,
+            nullptr,
+            &command_pool);
+    if (VK_SUCCESS != result) {
+        throw std::runtime_error("Failed to create command pool");
+    }
+
+    return command_pool;
+}
+
 static void
 game(void)
 {
@@ -1053,6 +1081,7 @@ game(void)
     VkRenderPass render_pass;
     VkPipelineLayout pipeline_layout;
     VkPipeline graphics_pipeline;
+    VkCommandPool command_pool;
 
     std::vector<VkImageView> swapchain_image_views;
     std::vector<VkImage> swapchain_images;
@@ -1094,6 +1123,7 @@ game(void)
     render_pass = {};
     pipeline_layout = {};
     graphics_pipeline = {};
+    command_pool = {};
 
     swapchain_image_views.resize(0);
     swapchain_images.resize(0);
@@ -1226,6 +1256,10 @@ game(void)
             render_pass,
             swapchain_extent);
 
+    command_pool = create_command_pool(
+            logical_device,
+            family_indices);
+
     // SDL createMainRenderer # <- necessary here?
 
     // SDL setRenderDrawColor # <- necessary here?
@@ -1233,6 +1267,8 @@ game(void)
     msg_temp = g_program_name;
     msg_temp += " shutting down";
     Log::i(msg_temp);
+
+    vkDestroyCommandPool(logical_device, command_pool, nullptr);
 
     for (VkFramebuffer framebuffer : swapchain_framebuffers) {
         vkDestroyFramebuffer(logical_device, framebuffer, nullptr);
