@@ -1161,6 +1161,53 @@ record_command_buffer(
 }
 
 static void
+draw_frame(void)
+{
+}
+
+static VkSemaphore
+create_vulkan_semaphore(const VkDevice& logical_device)
+{
+    VkResult result;
+    VkSemaphore semaphore;
+    VkSemaphoreCreateInfo semaphore_info;
+
+    result = VK_ERROR_UNKNOWN;
+    semaphore = {};
+    semaphore_info = {};
+
+    semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    result = vkCreateSemaphore(logical_device, &semaphore_info, nullptr, &semaphore);
+    if (VK_SUCCESS != result) {
+        throw std::runtime_error("Failed to create vulkan semaphore");
+    }
+
+    return semaphore;
+}
+
+static VkFence
+create_vulkan_fence(const VkDevice& logical_device)
+{
+    VkResult result;
+    VkFence fence;
+    VkFenceCreateInfo fence_info;
+
+    result = VK_ERROR_UNKNOWN;
+    fence = {};
+    fence_info = {};
+
+    fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+    result = vkCreateFence(logical_device, &fence_info, nullptr, &fence);
+    if (VK_SUCCESS != result) {
+        throw std::runtime_error("Failed to create vulkan fence");
+    }
+
+    return fence;
+}
+
+static void
 game(void)
 {
     std::int32_t ret;
@@ -1203,6 +1250,10 @@ game(void)
     VkPipeline graphics_pipeline;
     VkCommandPool command_pool;
     VkCommandBuffer command_buffer;
+
+    VkSemaphore semaphore_image_available;
+    VkSemaphore semaphore_render_finished;
+    VkFence fence_in_flight;
 
     std::vector<VkImageView> swapchain_image_views;
     std::vector<VkImage> swapchain_images;
@@ -1290,9 +1341,9 @@ game(void)
         throw std::runtime_error(msg_temp);
     }
 
-    Log::i("Sleeping for 2 seconds");
+    Log::i("Sleeping for 1 second");
     std::this_thread::sleep_for(
-            std::chrono::milliseconds(2000));
+            std::chrono::milliseconds(1000));
 
     SDL_Vulkan_GetInstanceExtensions(main_window, &extension_count, nullptr);
     extension_names.resize(extension_count);
@@ -1385,6 +1436,10 @@ game(void)
             logical_device,
             command_pool);
 
+    semaphore_image_available = create_vulkan_semaphore(logical_device);
+    semaphore_render_finished = create_vulkan_semaphore(logical_device);
+    fence_in_flight = create_vulkan_fence(logical_device);
+
 #if 0
     record_command_buffer(
             command_buffer,
@@ -1395,6 +1450,18 @@ game(void)
             graphics_pipeline);
 #endif
 
+    draw_frame();
+
+#if 0
+    // TODO Main loop here
+    while (1 /* loop until window close event */) {
+    }
+#endif
+
+    Log::i("Sleeping for 1 second");
+    std::this_thread::sleep_for(
+            std::chrono::milliseconds(1000));
+
     // SDL createMainRenderer # <- necessary here?
 
     // SDL setRenderDrawColor # <- necessary here?
@@ -1402,6 +1469,10 @@ game(void)
     msg_temp = g_program_name;
     msg_temp += " shutting down";
     Log::i(msg_temp);
+
+    vkDestroySemaphore(logical_device, semaphore_image_available, nullptr);
+    vkDestroySemaphore(logical_device, semaphore_render_finished, nullptr);
+    vkDestroyFence(logical_device, fence_in_flight, nullptr);
 
     vkDestroyCommandPool(logical_device, command_pool, nullptr);
 
