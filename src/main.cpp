@@ -1095,12 +1095,12 @@ create_command_buffer(
 
 static void
 record_command_buffer(
-        const VkCommandBuffer command_buffer,
+        VkCommandBuffer command_buffer,
         uint32_t image_index,
-        const VkRenderPass& render_pass,
-        const std::vector<VkFramebuffer>& swapchain_framebuffers,
-        const VkExtent2D& swapchain_extent,
-        const VkPipeline& graphics_pipeline)
+        VkRenderPass& render_pass,
+        std::vector<VkFramebuffer>& swapchain_framebuffers,
+        VkExtent2D& swapchain_extent,
+        VkPipeline& graphics_pipeline)
 {
     VkResult result;
     VkCommandBufferBeginInfo begin_info;
@@ -1161,8 +1161,72 @@ record_command_buffer(
 }
 
 static void
-draw_frame(void)
+draw_frame(
+        VkDevice& logical_device,
+        VkFence& fence_in_flight,
+        VkSwapchainKHR& swapchain,
+        VkSemaphore& semaphore_image_available,
+        VkSemaphore& semaphore_render_finished,
+        VkCommandBuffer command_buffer,
+        VkRenderPass& render_pass,
+        std::vector<VkFramebuffer>& swapchain_framebuffers,
+        VkExtent2D& swapchain_extent,
+        VkPipeline& graphics_pipeline,
+        VkQueue drawing_queue)
 {
+    VkResult result;
+    VkSubmitInfo submit_info;
+    VkSemaphore wait_semaphores[1];
+    VkSemaphore signal_semaphores[1];
+    VkPipelineStageFlags wait_stages[1];
+
+    uint32_t image_index;
+    uint32_t flags;
+
+    result = VK_ERROR_UNKNOWN;
+    submit_info = {};
+    wait_semaphores[0] = semaphore_image_available;
+    signal_semaphores[0] = semaphore_render_finished;
+    wait_stages[0] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+    flags = 0;
+    image_index = -1;
+
+    vkWaitForFences(logical_device, 1, &fence_in_flight, VK_TRUE, UINT64_MAX);
+
+    vkResetFences(logical_device, 1, &fence_in_flight);
+
+    vkAcquireNextImageKHR(
+            logical_device,
+            swapchain,
+            UINT64_MAX,
+            semaphore_image_available,
+            VK_NULL_HANDLE,
+            &image_index);
+
+    vkResetCommandBuffer(command_buffer, flags);
+
+    record_command_buffer(
+            command_buffer,
+            image_index,
+            render_pass,
+            swapchain_framebuffers,
+            swapchain_extent,
+            graphics_pipeline);
+
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.waitSemaphoreCount = 1;
+    submit_info.pWaitSemaphores = wait_semaphores;
+    submit_info.pWaitDstStageMask = wait_stages;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &command_buffer;
+    submit_info.signalSemaphoreCount = 1;
+    submit_info.pSignalSemaphores = signal_semaphores;
+
+    result = vkQueueSubmit(drawing_queue, 1, &submit_info, fence_in_flight);
+    if (VK_SUCCESS != result) {
+        throw std::runtime_error("Failed to submit draw command buffer");
+    }
 }
 
 static VkSemaphore
@@ -1198,6 +1262,7 @@ create_vulkan_fence(const VkDevice& logical_device)
     fence_info = {};
 
     fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
     result = vkCreateFence(logical_device, &fence_info, nullptr, &fence);
     if (VK_SUCCESS != result) {
@@ -1441,16 +1506,19 @@ game(void)
     fence_in_flight = create_vulkan_fence(logical_device);
 
 #if 0
-    record_command_buffer(
+    draw_frame(
+            logical_device,
+            fence_in_flight,
+            swapchain,
+            semaphore_image_available,
+            semaphore_render_finished,
             command_buffer,
-            -1, /* TODO set a proper image_index */
             render_pass,
             swapchain_framebuffers,
             swapchain_extent,
-            graphics_pipeline);
+            graphics_pipeline,
+            drawing_queue);
 #endif
-
-    draw_frame();
 
 #if 0
     // TODO Main loop here
