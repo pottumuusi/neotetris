@@ -1531,7 +1531,6 @@ game(void)
     semaphore_render_finished = create_vulkan_semaphore(logical_device);
     fence_in_flight = create_vulkan_fence(logical_device);
 
-#if 0
     draw_frame(
             logical_device,
             fence_in_flight,
@@ -1545,7 +1544,6 @@ game(void)
             graphics_pipeline,
             drawing_queue,
             presentation_queue);
-#endif
 
 #if 0
     // TODO Main loop here
