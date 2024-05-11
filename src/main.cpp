@@ -1178,24 +1178,29 @@ draw_frame(
         VkSwapchainKHR& swapchain,
         VkSemaphore& semaphore_image_available,
         VkSemaphore& semaphore_render_finished,
-        VkCommandBuffer command_buffer,
+        VkCommandBuffer& command_buffer,
         VkRenderPass& render_pass,
         std::vector<VkFramebuffer>& swapchain_framebuffers,
         VkExtent2D& swapchain_extent,
         VkPipeline& graphics_pipeline,
-        VkQueue drawing_queue)
+        VkQueue& drawing_queue,
+        VkQueue& presentation_queue)
 {
     VkResult result;
     VkSubmitInfo submit_info;
+    VkPresentInfoKHR present_info;
     VkSemaphore wait_semaphores[1];
     VkSemaphore signal_semaphores[1];
     VkPipelineStageFlags wait_stages[1];
+    VkSwapchainKHR swapchains[1];
 
     uint32_t image_index;
     uint32_t flags;
 
     result = VK_ERROR_UNKNOWN;
     submit_info = {};
+    present_info = {};
+    swapchains[0] = swapchain;
     wait_semaphores[0] = semaphore_image_available;
     signal_semaphores[0] = semaphore_render_finished;
     wait_stages[0] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -1207,7 +1212,8 @@ draw_frame(
 
     vkResetFences(logical_device, 1, &fence_in_flight);
 
-    vkAcquireNextImageKHR(
+    // TODO handle return value
+    (void) vkAcquireNextImageKHR(
             logical_device,
             swapchain,
             UINT64_MAX,
@@ -1234,10 +1240,19 @@ draw_frame(
     submit_info.signalSemaphoreCount = 1;
     submit_info.pSignalSemaphores = signal_semaphores;
 
+    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    present_info.waitSemaphoreCount = 1;
+    present_info.pWaitSemaphores = signal_semaphores;
+    present_info.swapchainCount = 1;
+    present_info.pSwapchains = swapchains;
+    present_info.pImageIndices = &image_index;
+
     result = vkQueueSubmit(drawing_queue, 1, &submit_info, fence_in_flight);
     if (VK_SUCCESS != result) {
         throw std::runtime_error("Failed to submit draw command buffer");
     }
+
+    (void) vkQueuePresentKHR(presentation_queue, &present_info);
 }
 
 static VkSemaphore
@@ -1528,7 +1543,8 @@ game(void)
             swapchain_framebuffers,
             swapchain_extent,
             graphics_pipeline,
-            drawing_queue);
+            drawing_queue,
+            presentation_queue);
 #endif
 
 #if 0
