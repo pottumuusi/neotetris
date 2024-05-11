@@ -717,12 +717,14 @@ create_render_pass(
     VkResult result;
     VkRenderPass render_pass;
     VkSubpassDescription subpass;
+    VkSubpassDependency dependency;
     VkRenderPassCreateInfo render_pass_info;
     VkAttachmentDescription color_attachment;
     VkAttachmentReference color_attachment_ref;
 
     result = VK_ERROR_UNKNOWN;
     subpass = {};
+    dependency = {};
     render_pass = {};
     render_pass_info = {};
     color_attachment = {};
@@ -744,11 +746,20 @@ create_render_pass(
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &color_attachment_ref;
 
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
     render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     render_pass_info.attachmentCount = 1;
     render_pass_info.pAttachments = &color_attachment;
     render_pass_info.subpassCount = 1;
     render_pass_info.pSubpasses = &subpass;
+    render_pass_info.dependencyCount = 1;
+    render_pass_info.pDependencies = &dependency;
 
     result = vkCreateRenderPass(
             logical_device,
