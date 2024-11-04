@@ -14,7 +14,7 @@ main() {
     ./vulkan-tools/scripts/install_glslc.sh
 
     popd # ${workarea}
-    rm -r "${workarea}"
+    rm -rf "${workarea}"
 
     popd # /tmp
 }
