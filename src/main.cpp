@@ -13,10 +13,6 @@
 #include <SDL2/SDL_vulkan.h>
 #endif
 
-#ifdef _WIN32
-#include <SDL.h>
-#endif
-
 // Uncomment to disable debugging
 // #define NDEBUG
 
@@ -277,7 +273,7 @@ device_is_suitable(
 }
 
 static VkSurfaceKHR
-create_surface(SDL_Window* window, VkInstance instance)
+create_surface(SDL_Window* window, VkInstance* instance)
 {
     SDL_bool ret;
     VkSurfaceKHR surface;
@@ -285,7 +281,7 @@ create_surface(SDL_Window* window, VkInstance instance)
     surface = VK_NULL_HANDLE;
     ret = SDL_FALSE;
 
-    ret = SDL_Vulkan_CreateSurface(window, instance, &surface);
+    ret = SDL_Vulkan_CreateSurface(window, *instance, &surface);
     if (SDL_FALSE == ret) {
         g_msg_temp = "Failed to create surface: ";
         g_msg_temp += SDL_GetError();
@@ -1460,7 +1456,7 @@ game(void)
         throw std::runtime_error(msg_temp);
     }
 
-    surface = create_surface(main_window, vulkan_instance);
+    surface = create_surface(main_window, &vulkan_instance);
     physical_device = pick_physical_device(&vulkan_instance, surface);
     family_indices = find_queue_family_indices(physical_device, surface);
     logical_device = create_logical_device(physical_device, family_indices);

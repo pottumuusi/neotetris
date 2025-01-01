@@ -16,7 +16,6 @@ SHADER_COMPIER := glslc
 
 COMPILER_FLAGS_GAME_CLIENT := -I$(HEADERS_DIR_GAME_CLIENT)
 LINKER_FLAGS_GAME_CLIENT := -lSDL2 -lvulkan -ldl -lpthread -lX11
-# LINKER_FLAGS_GAME_CLIENT := -lSDL2 -lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi
 
 define verify_build_tools_present
 	$(info Checking presence of build/compilation tools)

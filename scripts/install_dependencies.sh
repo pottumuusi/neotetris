@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# TODO test on a fresh Linux install and add any missing dependencies
-
 main() {
     local -r workarea='neotetris_dependencies_install'
 
