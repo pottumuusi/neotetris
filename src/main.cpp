@@ -330,7 +330,7 @@ pick_physical_device(VkInstance* vulkan_instance, const VkSurfaceKHR& surface)
                 device,
                 &features);
 
-        std::cout << "Enumerated physical devices:" << "\n";
+        std::cout << "Enumerated physical device:" << "\n";
         std::cout << "\t" << properties.deviceName << "\n";
         std::cout << "\t" << properties.deviceType << "\n";
         std::cout << "\t" << "Geometry Shader available: "
@@ -427,9 +427,7 @@ pick_swap_surface_format(
         }
     }
 
-    Log::w("Could not find the preferred format combination");
-
-    return available_formats[0];
+    throw std::runtime_error("pick_swap_surface_format: Could not find the preferred format combination");
 }
 
 static VkPresentModeKHR
@@ -532,8 +530,8 @@ create_swap_chain(
     chain_create_info = {};
 
     std::uint32_t family_index_array[2] = {
-        family_indices.drawing_family,
-        family_indices.presentation_family,
+        -1,
+        -1,
     };
 
     surface_properties = find_surface_properties(device, surface);
@@ -542,9 +540,9 @@ create_swap_chain(
     extent = pick_swap_extent(surface_properties.capabilities, window);
     family_indices = find_queue_family_indices(device, surface);
 
-    sharing_mode = VK_SHARING_MODE_EXCLUSIVE;
-    family_index_count = 0;
-    family_index_array_base = nullptr;
+    family_index_array[0] = family_indices.drawing_family;
+    family_index_array[1] = family_indices.presentation_family;
+
     condition =
         family_indices.drawing_family !=
         family_indices.presentation_family;
@@ -554,8 +552,19 @@ create_swap_chain(
         sharing_mode = VK_SHARING_MODE_CONCURRENT;
         family_index_count = 2;
         family_index_array_base = family_index_array;
+    } else {
+        sharing_mode = VK_SHARING_MODE_EXCLUSIVE;
+        family_index_count = 0;
+        family_index_array_base = nullptr;
+
+        Log::w("create_swap_chain: Using VK_SHARING_MODE_EXCLUSIVE, where family indices are ignored");
     }
 
+    /*
+     * +1 to avoid having to wait for driver. When using minimum image count,
+     * driver may need to complete internal operations before another image
+     * can be acquired for rendering to.
+     */
     image_count = surface_properties.capabilities.minImageCount + 1;
 
     // 0 maxImageCount stands for 'no maximum'
