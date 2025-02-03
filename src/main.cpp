@@ -530,8 +530,8 @@ create_swap_chain(
     chain_create_info = {};
 
     std::uint32_t family_index_array[2] = {
-        -1,
-        -1,
+        0,
+        0,
     };
 
     surface_properties = find_surface_properties(device, surface);
