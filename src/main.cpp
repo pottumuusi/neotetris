@@ -1319,7 +1319,6 @@ game(void)
     std::vector<const char*> extension_names;
     std::vector<VkFramebuffer> swapchain_framebuffers;
 
-    std::string msg_temp; // TODO start using g_msg_temp instead
     std::string hint_name;
     std::string hint_value;
 
@@ -1405,31 +1404,26 @@ game(void)
 
     family_indices = {0};
 
-    msg_temp = g_program_name;
-    msg_temp += " running";
-    Log::i(msg_temp);
+    g_msg_temp = g_program_name;
+    g_msg_temp += " running";
+    Log::i(g_msg_temp);
 
-    // SDL init
     flags = SDL_INIT_VIDEO;
     ret = SDL_Init(flags);
     if (ret < 0) {
-        msg_temp = "Failed to initialize SDL: ";
-        msg_temp += SDL_GetError();
-        throw std::runtime_error(msg_temp);
+        g_msg_temp = "Failed to initialize SDL: ";
+        g_msg_temp += SDL_GetError();
+        throw std::runtime_error(g_msg_temp);
     }
 
-    // SDL setHint
     ret = SDL_SetHint(hint_name.c_str(), hint_value.c_str());
-    if (ret < 0) {
-        msg_temp = "Setting SDL hint";
-        msg_temp += hint_name;
-        msg_temp += " failed";
-        Log::w(msg_temp);
+    if (SDL_FALSE == ret) {
+        g_msg_temp = "Setting SDL hint ";
+        g_msg_temp += hint_name;
+        g_msg_temp += " failed";
+        Log::w(g_msg_temp);
     }
 
-    // SDL imgInit # <- necessary here?
-
-    // SDL createMainWindow
     main_window = SDL_CreateWindow(
             window_title.c_str(),
             window_x,
@@ -1438,9 +1432,9 @@ game(void)
             window_h,
             window_flags);
     if (NULL == main_window) {
-        msg_temp = "Failed to create window: ";
-        msg_temp += SDL_GetError();
-        throw std::runtime_error(msg_temp);
+        g_msg_temp = "Failed to create window: ";
+        g_msg_temp += SDL_GetError();
+        throw std::runtime_error(g_msg_temp);
     }
 
     Log::i("Sleeping for 1 second");
@@ -1467,8 +1461,8 @@ game(void)
 
     result = vkCreateInstance(&create_info, nullptr, &vulkan_instance);
     if (VK_SUCCESS != result) {
-        msg_temp = "Failed to create Vulkan instance";
-        throw std::runtime_error(msg_temp);
+        g_msg_temp = "Failed to create Vulkan instance";
+        throw std::runtime_error(g_msg_temp);
     }
 
     surface = create_surface(main_window, &vulkan_instance);
@@ -1566,13 +1560,9 @@ game(void)
     std::this_thread::sleep_for(
             std::chrono::milliseconds(1000));
 
-    // SDL createMainRenderer # <- necessary here?
-
-    // SDL setRenderDrawColor # <- necessary here?
-
-    msg_temp = g_program_name;
-    msg_temp += " shutting down";
-    Log::i(msg_temp);
+    g_msg_temp = g_program_name;
+    g_msg_temp += " shutting down";
+    Log::i(g_msg_temp);
 
     vkDestroySemaphore(logical_device, semaphore_image_available, nullptr);
     vkDestroySemaphore(logical_device, semaphore_render_finished, nullptr);
@@ -1593,8 +1583,8 @@ game(void)
     }
 
     vkDestroySwapchainKHR(logical_device, swapchain, nullptr);
-    vkDestroySurfaceKHR(vulkan_instance, surface, nullptr);
     vkDestroyDevice(logical_device, nullptr);
+    vkDestroySurfaceKHR(vulkan_instance, surface, nullptr);
     vkDestroyInstance(vulkan_instance, nullptr);
 
     SDL_Quit();
