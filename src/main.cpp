@@ -1130,7 +1130,7 @@ record_command_buffer(
     viewport = {};
     begin_info = {};
     render_pass_info = {};
-    clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+    clear_color = {0.0f, 0.0f, 0.0f, 1.0f};
 
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags = 0;
@@ -1217,14 +1217,17 @@ draw_frame(
 
     vkResetFences(logical_device, 1, &fence_in_flight);
 
-    // TODO handle return value
-    (void) vkAcquireNextImageKHR(
+    result = vkAcquireNextImageKHR(
             logical_device,
             swapchain,
             UINT64_MAX,
             semaphore_image_available,
             VK_NULL_HANDLE,
             &image_index);
+    if (VK_SUCCESS != result) {
+        throw std::runtime_error(
+            "Failed to retrieve index of next available presentable image");
+    }
 
     vkResetCommandBuffer(command_buffer, flags);
 
@@ -1257,7 +1260,10 @@ draw_frame(
         throw std::runtime_error("Failed to submit draw command buffer");
     }
 
-    (void) vkQueuePresentKHR(presentation_queue, &present_info);
+    result = vkQueuePresentKHR(presentation_queue, &present_info);
+    if (VK_SUCCESS != result) {
+        throw std::runtime_error("Failed to queue image for presentation");
+    }
 }
 
 static VkSemaphore
